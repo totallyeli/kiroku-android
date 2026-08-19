@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -200,6 +201,22 @@ private fun HabitCard(item: HabitWithStatus, onClick: () -> Unit, onToggle: () -
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                item.habit.dueTimeMinutes?.let { minutes ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(17.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            text = stringResource(R.string.habit_reminder_at, formatDueTime(minutes)),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 3.dp),
+                        )
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.LocalFireDepartment,
@@ -237,3 +254,5 @@ private fun HabitCard(item: HabitWithStatus, onClick: () -> Unit, onToggle: () -
     }
 }
 
+private fun formatDueTime(minutes: Int): String =
+    "%02d:%02d".format(minutes / 60, minutes % 60)

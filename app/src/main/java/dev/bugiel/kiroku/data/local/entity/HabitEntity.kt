@@ -14,6 +14,7 @@ data class HabitEntity(
     val colorKey: String,
     val createdEpochDay: Long,
     val isActive: Boolean,
+    val dueTimeMinutes: Int?,
 )
 
 fun HabitEntity.toDomain() = Habit(
@@ -24,6 +25,7 @@ fun HabitEntity.toDomain() = Habit(
     colorKey = colorKey,
     createdEpochDay = createdEpochDay,
     isActive = isActive,
+    dueTimeMinutes = dueTimeMinutes,
 )
 
 fun Habit.toEntity() = HabitEntity(
@@ -34,5 +36,5 @@ fun Habit.toEntity() = HabitEntity(
     colorKey = colorKey,
     createdEpochDay = createdEpochDay,
     isActive = isActive,
+    dueTimeMinutes = dueTimeMinutes,
 )
-

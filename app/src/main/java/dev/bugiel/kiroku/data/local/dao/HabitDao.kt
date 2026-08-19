@@ -21,6 +21,16 @@ interface HabitDao {
     @Query("SELECT * FROM habits WHERE id = :id")
     suspend fun getById(id: Long): HabitEntity?
 
+    @Query("SELECT * FROM habits WHERE isActive = 1 AND dueTimeMinutes IS NOT NULL")
+    suspend fun getActiveWithReminders(): List<HabitEntity>
+
+    @Query(
+        "SELECT EXISTS(" +
+            "SELECT 1 FROM habit_completions WHERE habitId = :habitId AND epochDay = :epochDay" +
+            ")",
+    )
+    suspend fun isCompleted(habitId: Long, epochDay: Long): Boolean
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(habit: HabitEntity): Long
 
@@ -42,4 +52,3 @@ interface HabitDao {
     @Query("DELETE FROM habit_completions WHERE habitId = :habitId AND epochDay = :epochDay")
     suspend fun deleteCompletion(habitId: Long, epochDay: Long)
 }
-

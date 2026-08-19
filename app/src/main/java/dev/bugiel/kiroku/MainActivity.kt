@@ -1,5 +1,6 @@
 package dev.bugiel.kiroku
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -56,20 +57,42 @@ import dev.bugiel.kiroku.ui.notes.NotesScreen
 import dev.bugiel.kiroku.ui.notes.NotesViewModel
 import dev.bugiel.kiroku.ui.theme.KirokuTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    private val reminderHabitId = MutableStateFlow<Long?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        reminderHabitId.value = intent.getLongExtra(EXTRA_REMINDER_HABIT_ID, 0L).takeIf { it != 0L }
         enableEdgeToEdge()
         setContent {
-            KirokuRoot((application as KirokuApplication).container)
+            val openHabitId by reminderHabitId.collectAsStateWithLifecycle()
+            KirokuRoot(
+                container = (application as KirokuApplication).container,
+                openHabitId = openHabitId,
+                onHabitOpened = { reminderHabitId.value = null },
+            )
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        reminderHabitId.value = intent.getLongExtra(EXTRA_REMINDER_HABIT_ID, 0L).takeIf { it != 0L }
+    }
+
+    companion object {
+        const val EXTRA_REMINDER_HABIT_ID = "dev.bugiel.kiroku.extra.OPEN_REMINDER_HABIT_ID"
     }
 }
 
 @Composable
-private fun KirokuRoot(container: AppContainer) {
+private fun KirokuRoot(
+    container: AppContainer,
+    openHabitId: Long?,
+    onHabitOpened: () -> Unit,
+) {
     val settings by container.settingsRepository.themeSettings.collectAsStateWithLifecycle(ThemeSettings())
     val systemDark = isSystemInDarkTheme()
     val dark = when (settings.mode) {
@@ -104,7 +127,12 @@ private fun KirokuRoot(container: AppContainer) {
     }
 
     KirokuTheme(darkTheme = dark, dynamicColor = settings.dynamicColors) {
-        KirokuNavigation(container = container, onOpenSettings = { showThemeDialog = true })
+        KirokuNavigation(
+            container = container,
+            openHabitId = openHabitId,
+            onHabitOpened = onHabitOpened,
+            onOpenSettings = { showThemeDialog = true },
+        )
         if (showThemeDialog) {
             ThemeSettingsDialog(
                 settings = settings,
@@ -119,11 +147,23 @@ private fun KirokuRoot(container: AppContainer) {
 }
 
 @Composable
-private fun KirokuNavigation(container: AppContainer, onOpenSettings: () -> Unit) {
+private fun KirokuNavigation(
+    container: AppContainer,
+    openHabitId: Long?,
+    onHabitOpened: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val rootRoutes = setOf("notes", "habits")
+
+    LaunchedEffect(openHabitId) {
+        openHabitId?.let { habitId ->
+            navController.navigate("habit/$habitId") { launchSingleTop = true }
+            onHabitOpened()
+        }
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -229,7 +269,12 @@ private fun KirokuNavigation(container: AppContainer, onOpenSettings: () -> Unit
                     key = "habit-editor-$habitId",
                     factory = viewModelFactory {
                         initializer {
-                            HabitEditorViewModel(habitId, container.habitRepository, container.dateClock)
+                            HabitEditorViewModel(
+                                habitId = habitId,
+                                repository = container.habitRepository,
+                                dateClock = container.dateClock,
+                                reminderScheduler = container.habitReminderScheduler,
+                            )
                         }
                     },
                 )

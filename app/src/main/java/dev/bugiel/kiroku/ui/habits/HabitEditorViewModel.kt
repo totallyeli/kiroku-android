@@ -7,6 +7,7 @@ import dev.bugiel.kiroku.domain.model.Habit
 import dev.bugiel.kiroku.domain.model.HabitColorKey
 import dev.bugiel.kiroku.domain.model.HabitIconKey
 import dev.bugiel.kiroku.domain.time.DateClock
+import dev.bugiel.kiroku.reminder.HabitReminderScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +20,7 @@ data class HabitEditorState(
     val iconKey: String = HabitIconKey.STAR,
     val colorKey: String = HabitColorKey.GREEN,
     val createdEpochDay: Long = 0,
+    val dueTimeMinutes: Int? = null,
     val isLoading: Boolean = true,
     val showNameError: Boolean = false,
     val hasSaveError: Boolean = false,
@@ -30,6 +32,7 @@ data class HabitEditorState(
         iconKey = iconKey,
         colorKey = colorKey,
         createdEpochDay = createdEpochDay,
+        dueTimeMinutes = dueTimeMinutes,
     )
 }
 
@@ -37,6 +40,7 @@ class HabitEditorViewModel(
     habitId: Long,
     private val repository: HabitRepository,
     private val dateClock: DateClock,
+    private val reminderScheduler: HabitReminderScheduler,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HabitEditorState())
     val state: StateFlow<HabitEditorState> = mutableState.asStateFlow()
@@ -54,6 +58,7 @@ class HabitEditorViewModel(
                     iconKey = habit.iconKey,
                     colorKey = habit.colorKey,
                     createdEpochDay = habit.createdEpochDay,
+                    dueTimeMinutes = habit.dueTimeMinutes,
                     isLoading = false,
                 )
             }
@@ -64,6 +69,7 @@ class HabitEditorViewModel(
     fun setDescription(value: String) = setState { copy(description = value, hasSaveError = false) }
     fun setIcon(key: String) = setState { copy(iconKey = key) }
     fun setColor(key: String) = setState { copy(colorKey = key) }
+    fun setDueTime(minutes: Int?) = setState { copy(dueTimeMinutes = minutes) }
 
     fun save(onSaved: (Long) -> Unit) {
         val snapshot = mutableState.value
@@ -73,7 +79,10 @@ class HabitEditorViewModel(
         }
         viewModelScope.launch {
             runCatching { repository.save(snapshot.toHabit()) }
-                .onSuccess(onSaved)
+                .onSuccess { habitId ->
+                    reminderScheduler.schedule(snapshot.toHabit().copy(id = habitId))
+                    onSaved(habitId)
+                }
                 .onFailure { mutableState.value = mutableState.value.copy(hasSaveError = true) }
         }
     }
@@ -81,7 +90,10 @@ class HabitEditorViewModel(
     fun delete(onDeleted: () -> Unit) {
         viewModelScope.launch {
             val snapshot = mutableState.value
-            if (snapshot.id != 0L) repository.delete(snapshot.toHabit())
+            if (snapshot.id != 0L) {
+                repository.delete(snapshot.toHabit())
+                reminderScheduler.cancel(snapshot.id)
+            }
             onDeleted()
         }
     }
@@ -90,4 +102,3 @@ class HabitEditorViewModel(
         if (!mutableState.value.isLoading) mutableState.value = mutableState.value.transform()
     }
 }
-

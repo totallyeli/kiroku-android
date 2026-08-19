@@ -10,6 +10,7 @@ import dev.bugiel.kiroku.data.repository.OfflineNoteRepository
 import dev.bugiel.kiroku.data.repository.SettingsRepository
 import dev.bugiel.kiroku.domain.time.SystemDateClock
 import dev.bugiel.kiroku.domain.time.TodayProvider
+import dev.bugiel.kiroku.reminder.AndroidHabitReminderScheduler
 
 class AppContainer(context: Context) {
     val dateClock = SystemDateClock()
@@ -25,4 +26,5 @@ class AppContainer(context: Context) {
     val noteRepository: NoteRepository by lazy { OfflineNoteRepository(database.noteDao()) }
     val habitRepository: HabitRepository by lazy { OfflineHabitRepository(database.habitDao()) }
     val settingsRepository = SettingsRepository(context.applicationContext)
+    val habitReminderScheduler = AndroidHabitReminderScheduler(context.applicationContext)
 }

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -141,6 +142,25 @@ private fun HabitDetailContent(
                         Text(habit.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         if (habit.description.isNotBlank()) {
                             Text(habit.description, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        habit.dueTimeMinutes?.let { minutes ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(top = 4.dp),
+                            ) {
+                                Icon(
+                                    Icons.Default.Schedule,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(17.dp),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                                Text(
+                                    text = stringResource(R.string.habit_reminder_at, formatDueTime(minutes)),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 4.dp),
+                                )
+                            }
                         }
                     }
                 }
@@ -339,3 +359,6 @@ private fun Legend(color: Color, label: Int, filled: Boolean) {
         )
     }
 }
+
+private fun formatDueTime(minutes: Int): String =
+    "%02d:%02d".format(minutes / 60, minutes % 60)

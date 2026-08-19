@@ -8,6 +8,7 @@ data class Habit(
     val colorKey: String = HabitColorKey.GREEN,
     val createdEpochDay: Long,
     val isActive: Boolean = true,
+    val dueTimeMinutes: Int? = null,
 )
 
 data class HabitWithStatus(
@@ -43,4 +44,3 @@ object HabitColorKey {
 
     val all = listOf(GREEN, BLUE, ORANGE, PINK, PURPLE, TEAL)
 }
-

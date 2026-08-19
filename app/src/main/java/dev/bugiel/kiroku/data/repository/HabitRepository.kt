@@ -16,6 +16,8 @@ interface HabitRepository {
     fun observeHabit(id: Long): Flow<Habit?>
     fun observeCompletionDays(habitId: Long): Flow<Set<Long>>
     suspend fun getHabit(id: Long): Habit?
+    suspend fun getActiveWithReminders(): List<Habit>
+    suspend fun isCompleted(habitId: Long, epochDay: Long): Boolean
     suspend fun save(habit: Habit): Long
     suspend fun delete(habit: Habit)
     suspend fun setCompletion(habitId: Long, epochDay: Long, completed: Boolean, timestamp: Long)
@@ -45,6 +47,12 @@ class OfflineHabitRepository(
         dao.observeCompletionDays(habitId).map { it.toSet() }
 
     override suspend fun getHabit(id: Long): Habit? = dao.getById(id)?.toDomain()
+
+    override suspend fun getActiveWithReminders(): List<Habit> =
+        dao.getActiveWithReminders().map { it.toDomain() }
+
+    override suspend fun isCompleted(habitId: Long, epochDay: Long): Boolean =
+        dao.isCompleted(habitId, epochDay)
 
     override suspend fun save(habit: Habit): Long {
         return if (habit.id == 0L) {
@@ -76,4 +84,3 @@ class OfflineHabitRepository(
         }
     }
 }
-

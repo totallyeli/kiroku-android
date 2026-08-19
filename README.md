@@ -7,6 +7,7 @@ Kiroku ist eine private, vollständig offline arbeitende Android-App für Notize
 - Notizen erstellen, automatisch speichern, bearbeiten, anheften, farblich markieren, durchsuchen und bestätigt löschen
 - Getrennter täglicher Gewohnheitentracker mit Tagesfortschritt und sofortigem Abhaken
 - Gewohnheiten mit Name, Beschreibung, Symbol, Farbe und Erstellungsdatum verwalten
+- Optionale tägliche Uhrzeit mit lokaler Benachrichtigung unter „Weitere Optionen“
 - Aktuelle und längste Serie sowie Gesamtzahl erledigter Tage
 - Monatskalender mit Navigation und Korrektur vergangener bzw. heutiger Einträge
 - Helles, dunkles oder systemgesteuertes Design sowie dynamische Farben ab Android 12
@@ -21,6 +22,7 @@ app/src/main/java/dev/bugiel/kiroku/
 ├── data/       Room, DAOs und lokale Repositories
 ├── di/         kleiner manueller AppContainer
 ├── domain/     Modelle, Suche, Serien- und Datumslogik
+├── reminder/   Planung und Anzeige lokaler Gewohnheitserinnerungen
 └── ui/         Compose-Screens, ViewModels, Theme und UI-Helfer
 ```
 
@@ -29,6 +31,8 @@ app/src/main/java/dev/bugiel/kiroku/
 Erledigungen werden mit einem zusammengesetzten Primärschlüssel aus Gewohnheits-ID und lokalem `epochDay` gespeichert. Ein Tageswechsel löscht keine Daten: Die Oberfläche fragt einfach den neuen lokalen Kalendertag ab, wenn die App fortgesetzt wird und zusätzlich einmal pro Minute während sie geöffnet ist.
 
 Eine aktuelle Serie endet heute oder – solange heute noch offen ist – gestern. Sind weder heute noch gestern erledigt, ist die aktuelle Serie null. Die längste Serie ist die längste lückenlose Folge eindeutiger lokaler Kalendertage. Änderungen im Kalender berechnen alle Werte sofort neu.
+
+Eine optionale Erinnerungszeit verändert weder Tagesstatus noch Serien. Vor einer Benachrichtigung prüft Kiroku, ob die Gewohnheit am aktuellen lokalen Kalendertag bereits erledigt wurde. Erinnerungen werden nach Neustarts, Zeitzonenänderungen und App-Updates erneut geplant. Ab Android 13 muss der Benutzer Benachrichtigungen erlauben.
 
 ## Bauen und testen
 
@@ -56,5 +60,6 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 - Notizen unterstützen in Version 1 nur Klartext, keine Anhänge oder Formatierung.
 - Alle Gewohnheiten sind täglich; eigene Wochenpläne sind noch nicht verfügbar.
+- Android kann Erinnerungen durch Energiesparmaßnahmen geringfügig verzögert zustellen.
 - Es gibt bewusst keine Synchronisierung, Freigabe oder Exportfunktion.
 - Automatisierte Logiktests laufen lokal. Für visuelle Geräte-Tests wird ein eigener Emulator oder ein per ADB verbundenes Gerät benötigt.
