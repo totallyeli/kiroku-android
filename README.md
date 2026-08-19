@@ -1,57 +1,57 @@
 # Kiroku
 
-Kiroku ist eine private Android-App für Notizen und tägliche Gewohnheiten. Es gibt keine Konten, Werbung, Analyse oder Inhaltssynchronisierung. Notizen, Anlagen und Gewohnheiten bleiben lokal auf dem Gerät; Android-Cloud-Backups sind deaktiviert. Eine Internetverbindung wird ausschließlich für die vom Benutzer geöffnete Update-Prüfung über GitHub benötigt.
+Kiroku is a private Android app for notes and daily habits. It has no accounts, ads, analytics, or content synchronization. Notes, attachments, and habits remain on the device, and Android cloud backups are disabled. An internet connection is used only when the user opens Settings and checks GitHub for an update.
 
-## Funktionen
+## Features
 
-- Notizen erstellen, automatisch speichern, bearbeiten, anheften, farblich markieren, durchsuchen und bestätigt löschen
-- Markdown schreiben und als formatierte Vorschau anzeigen, einschließlich einer kompakten Formatleiste
-- Notizen aus `.txt`- und `.md`-Dateien importieren
-- Bilder, PDF- und Markdown-Dateien an Notizen anhängen, in Kiroku öffnen und über Android wieder exportieren
-- Getrennter täglicher Gewohnheitentracker mit Tagesfortschritt und sofortigem Abhaken
-- Gewohnheiten mit Name, Beschreibung, Farbe, Erstellungsdatum und einer erweiterten Auswahl aus 28 Symbolen verwalten
-- Optionale tägliche Uhrzeit mit lokaler Benachrichtigung unter „Weitere Optionen“
-- Aktuelle und längste Serie sowie Gesamtzahl erledigter Tage
-- Monatskalender mit Navigation und Korrektur vergangener bzw. heutiger Einträge
-- Helles, dunkles oder systemgesteuertes Design sowie dynamische Farben ab Android 12
-- In den Einstellungen automatisch das neueste GitHub-Release prüfen, die APK laden und Androids Installer öffnen
-- Adaptive Oberfläche mit Edge-to-edge-Darstellung und persistentem Tab-Zustand
+- Create, autosave, edit, pin, color, search, and safely delete notes
+- Write Markdown with a compact formatting toolbar and formatted preview
+- Import notes from `.txt` and `.md` files
+- Attach images, PDFs, and Markdown files; open them in Kiroku and export them through Android
+- Track separate daily habits with progress and one-tap completion
+- Manage habits with a name, description, color, creation date, and 28 available icons
+- Set an optional daily time and local notification under **More options**
+- Review current streak, longest streak, and total completed days
+- Navigate a monthly calendar and correct past or current entries
+- Choose a light, dark, or system theme, with dynamic colors on Android 12 and later
+- Check the latest GitHub Release from Settings, download its verified APK, and open Android's installer
+- Use an adaptive edge-to-edge interface with persistent tab state
 
-## Technik und Struktur
+## Technology and structure
 
-Das Projekt verwendet Kotlin 2.4.10, Jetpack Compose/Material 3 (BOM 2026.06.01), Navigation Compose, ViewModel, Coroutines/Flow, Room 3.0.1, DataStore, Android Gradle Plugin 9.2.1 und Gradle 9.4.1. `minSdk` ist 26, `targetSdk`/`compileSdk` ist 37.0; Java- und Kotlin-Bytecode zielen auf JDK 17.
+The project uses Kotlin 2.4.10, Jetpack Compose and Material 3 (BOM 2026.06.01), Navigation Compose, ViewModel, Coroutines and Flow, Room 3.0.1, DataStore, Android Gradle Plugin 9.2.1, and Gradle 9.4.1. The minimum SDK is 26, the target and compile SDK are 37.0, and Java/Kotlin bytecode targets JDK 17.
 
 ```text
 app/src/main/java/dev/bugiel/kiroku/
-├── data/       Room, DAOs, Dokumentzugriff und lokale Repositories
-├── di/         kleiner manueller AppContainer
-├── domain/     Modelle, Suche, Serien- und Datumslogik
-├── reminder/   Planung und Anzeige lokaler Gewohnheitserinnerungen
-├── update/     GitHub-Release-Prüfung und geprüfter APK-Download
-└── ui/         Compose-Screens, Markdown, ViewModels, Theme und UI-Helfer
+├── data/       Room, DAOs, document access, and local repositories
+├── di/         Small manual AppContainer
+├── domain/     Models, search, streaks, and date logic
+├── reminder/   Local habit reminder scheduling and delivery
+├── update/     GitHub Release checks and verified APK downloads
+└── ui/         Compose screens, Markdown, ViewModels, theme, and UI helpers
 ```
 
-## Tageswechsel und Serien
+## Day rollover and streaks
 
-Erledigungen werden mit einem zusammengesetzten Primärschlüssel aus Gewohnheits-ID und lokalem `epochDay` gespeichert. Ein Tageswechsel löscht keine Daten: Die Oberfläche fragt einfach den neuen lokalen Kalendertag ab, wenn die App fortgesetzt wird und zusätzlich einmal pro Minute während sie geöffnet ist.
+Completions use a composite primary key made from the habit ID and local `epochDay`. A day rollover never deletes data. The UI reads the new local calendar day when the app resumes and once per minute while it remains open.
 
-Eine aktuelle Serie endet heute oder – solange heute noch offen ist – gestern. Sind weder heute noch gestern erledigt, ist die aktuelle Serie null. Die längste Serie ist die längste lückenlose Folge eindeutiger lokaler Kalendertage. Änderungen im Kalender berechnen alle Werte sofort neu.
+A current streak ends today or, while today is still incomplete, yesterday. If neither today nor yesterday is complete, the current streak is zero. The longest streak is the longest uninterrupted sequence of unique local calendar days. Calendar edits recalculate every statistic immediately.
 
-Eine optionale Erinnerungszeit verändert weder Tagesstatus noch Serien. Vor einer Benachrichtigung prüft Kiroku, ob die Gewohnheit am aktuellen lokalen Kalendertag bereits erledigt wurde. Erinnerungen werden nach Neustarts, Zeitzonenänderungen und App-Updates erneut geplant. Ab Android 13 muss der Benutzer Benachrichtigungen erlauben.
+An optional reminder time does not change daily status or streak calculations. Before showing a notification, Kiroku checks whether the habit is already complete for the current local day. Reminders are rescheduled after device restarts, time-zone changes, and app updates. Android 13 and later require notification permission.
 
-## Updates und Datensicherheit
+## Updates and data safety
 
-„Nach Updates suchen“ liest das neueste Release aus `totallyeli/kiroku-android`. Vor der Installation prüft Kiroku Paketname, höhere Versionsnummer, Signatur und – sofern von GitHub geliefert – die SHA-256-Prüfsumme der APK. Die eigentliche Installation bestätigt der Benutzer im Android-Systemdialog.
+**Check for updates** reads the latest release from `totallyeli/kiroku-android`. Before installation, Kiroku verifies the package name, higher version code, signing certificate, and the APK's SHA-256 digest when GitHub provides one. The user confirms the actual installation in Android's system dialog.
 
-Ein App-Update verwendet denselben Paketnamen und Signierschlüssel. Die Datenbank wird von Version 2 auf 3 ausschließlich um die neue Anlagentabelle ergänzt; bestehende Notizen, Gewohnheiten, Erledigungen und Serien werden nicht ersetzt oder gelöscht. Anlagen werden in den privaten App-Dateien gespeichert und bleiben bei einem normalen Update ebenfalls erhalten. Eine Deinstallation der App entfernt dagegen weiterhin die lokalen App-Daten.
+An app update uses the same package name and signing key. The version 2-to-3 database migration only adds the attachment table; it does not replace or delete existing notes, habits, completions, or streaks. Attachments are stored in private app files and also remain intact during a normal update. Uninstalling the app still removes its local app data.
 
 ## Installation
 
-Die aktuelle APK kann auf der GitHub-Seite unter **Releases** heruntergeladen und auf dem Android-Gerät geöffnet werden. Bei der ersten manuellen Installation muss Android die Installation aus der verwendeten Quelle erlauben. Bereits installierte Versionen können danach direkt über **Einstellungen → Updates** aktualisiert werden.
+Download the current APK from the GitHub **Releases** page and open it on the Android device. Android may ask for permission to install from that source during the first manual installation. An installed version can subsequently update through **Settings → Updates**.
 
-## Bauen und testen
+## Build and test
 
-Voraussetzungen: JDK 17 oder neuer sowie Android SDK Platform 37.0 mit Build Tools 36.0.0. Der lokale SDK-Pfad gehört ausschließlich in die ignorierte Datei `local.properties`.
+Requirements: JDK 17 or later, Android SDK Platform 37.0, and Build Tools 36.0.0. The local SDK path belongs only in the ignored `local.properties` file.
 
 ```bash
 ./gradlew test
@@ -59,21 +59,25 @@ Voraussetzungen: JDK 17 oder neuer sowie Android SDK Platform 37.0 mit Build Too
 ./gradlew assembleDebug
 ```
 
-Unter Windows können dieselben Aufgaben mit `gradlew.bat` ausgeführt werden. Der erzeugte APK liegt exakt unter:
+On Windows, run the same tasks with `gradlew.bat`. The generated APK is located at:
 
 ```text
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Installation auf einem verbundenen Gerät:
+Install it on a connected device with:
 
 ```bash
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-## Bekannte Grenzen
+## Project language
 
-- Alle Gewohnheiten sind täglich; eigene Wochenpläne sind noch nicht verfügbar.
-- Android kann Erinnerungen durch Energiesparmaßnahmen geringfügig verzögert zustellen.
-- Es gibt bewusst keine Konten oder Cloud-Synchronisierung. Anlagen lassen sich einzeln exportieren; ein vollständiges App-Backup ist noch nicht integriert.
-- Automatisierte Logiktests laufen lokal. Für visuelle Geräte-Tests wird ein eigener Emulator oder ein per ADB verbundenes Gerät benötigt.
+Repository documentation and development communication use English. The shipped app interface remains German until multilingual support is implemented as a dedicated feature. See [CONTRIBUTING.md](CONTRIBUTING.md) for the policy that applies to future changes.
+
+## Known limitations
+
+- Every habit currently repeats daily; custom weekly schedules are not available yet.
+- Android power-saving behavior may delay reminders slightly.
+- There are intentionally no accounts or cloud synchronization. Attachments can be exported individually, but a complete app backup is not implemented.
+- Automated logic tests run locally. Visual device testing requires an emulator or an Android device connected through ADB.

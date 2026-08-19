@@ -1,17 +1,17 @@
-# Änderungen
+# Changelog
 
-## 1.1.0 – 2026-08-20
+## 1.1.0 — 2026-08-20
 
-- Update-Prüfung in den Einstellungen mit GitHub-Release-Vergleich, geprüftem APK-Download und Übergabe an Androids Installer
-- Markdown-Editor mit Formatleiste und formatierter Vorschau
-- Bilder, PDFs und Markdown-Dateien als lokale Notizanlagen mit integrierter Anzeige und Export
-- Import von `.txt`- und `.md`-Dateien als neue Notizen
-- Erweiterte Auswahl aus 28 Gewohnheitssymbolen hinter „Mehr Symbole anzeigen“
-- Datenbankmigration auf Version 3, die bestehende Notizen, Gewohnheiten und Erledigungen unverändert übernimmt
+- Added update checks in Settings with GitHub Release comparison, verified APK downloads, and Android installer handoff
+- Added a Markdown editor with a formatting toolbar and formatted preview
+- Added local image, PDF, and Markdown note attachments with integrated viewing and export
+- Added `.txt` and `.md` imports that create new notes
+- Added 28 habit icons behind **Show more icons**
+- Added the version 3 database migration while preserving existing notes, habits, and completions
 
-## 1.0.0 – 2026-08-19
+## 1.0.0 — 2026-08-19
 
-- Lokale Notizen mit Suche, Farben und Anheften
-- Tägliche Gewohnheiten mit Kalender, Serien und Statistiken
-- Optionale Erinnerungszeit mit lokaler Benachrichtigung
-- Helles, dunkles, systemgesteuertes und dynamisches Farbschema
+- Added local notes with search, colors, and pinning
+- Added daily habits with a calendar, streaks, and statistics
+- Added an optional reminder time with local notifications
+- Added light, dark, system-controlled, and dynamic color themes
