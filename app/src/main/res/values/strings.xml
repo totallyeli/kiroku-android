@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Kiroku</string>
+    <string name="notes">Notizen</string>
+    <string name="habits">Gewohnheiten</string>
+    <string name="theme_settings">Darstellung</string>
+    <string name="theme_system">Systemeinstellung</string>
+    <string name="theme_light">Hell</string>
+    <string name="theme_dark">Dunkel</string>
+    <string name="dynamic_colors">Dynamische Farben</string>
+    <string name="close">Schließen</string>
+</resources>
+

@@ -1,0 +1,45 @@
+# Gradle
+.gradle/
+**/build/
+build/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+out/
+
+# Local machine configuration
+local.properties
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+.env
+.env.*
+*.token
+
+# Generated Android artifacts
+*.apk
+*.aab
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Test output and caches
+**/test-results/
+**/reports/
+*.hprof
+
+# OS and temporary files
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+*.log
+*.swp
+*~
+
+# Emulator data
+*.avd/
+*.ini.lock
+
