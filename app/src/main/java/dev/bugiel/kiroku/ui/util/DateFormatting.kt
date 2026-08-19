@@ -26,3 +26,11 @@ fun formatLongDate(context: Context, date: LocalDate): String = date.format(
     DateTimeFormatter.ofPattern(context.getString(R.string.date_pattern_long), germanLocale),
 )
 
+fun formatTodayDate(context: Context, date: LocalDate): String = date.format(
+    DateTimeFormatter.ofPattern(context.getString(R.string.today_date_pattern), germanLocale),
+).replaceFirstChar { it.titlecase(germanLocale) }
+
+fun formatMonth(context: Context, month: java.time.YearMonth): String = month.format(
+    DateTimeFormatter.ofPattern(context.getString(R.string.month_pattern), germanLocale),
+).replaceFirstChar { it.titlecase(germanLocale) }
+
