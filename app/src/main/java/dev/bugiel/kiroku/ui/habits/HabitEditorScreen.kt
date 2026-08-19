@@ -25,6 +25,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -188,6 +191,42 @@ private fun HabitEditorContent(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    var showAllIcons by rememberSaveable { mutableStateOf(false) }
+    val quickIcons = if (state.iconKey in HabitIconKey.quick) {
+        HabitIconKey.quick
+    } else {
+        listOf(state.iconKey) + HabitIconKey.quick.take(5)
+    }
+
+    if (showAllIcons) {
+        AlertDialog(
+            onDismissRequest = { showAllIcons = false },
+            title = { Text(stringResource(R.string.choose_habit_icon)) },
+            text = {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(4),
+                    modifier = Modifier.fillMaxWidth().height(340.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(HabitIconKey.all, key = { it }) { key ->
+                        HabitIconOption(
+                            key = key,
+                            selected = state.iconKey == key,
+                            onClick = {
+                                onIconChange(key)
+                                showAllIcons = false
+                            },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAllIcons = false }) { Text(stringResource(R.string.close)) }
+            },
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -232,36 +271,19 @@ private fun HabitEditorContent(
 
         SelectionTitle(R.string.habit_icon)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            HabitIconKey.all.forEach { key ->
-                val selected = state.iconKey == key
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (selected) MaterialTheme.colorScheme.primaryContainer else {
-                                MaterialTheme.colorScheme.surfaceContainer
-                            },
-                        )
-                        .then(
-                            if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                            else Modifier,
-                        )
-                        .clickable(
-                            onClickLabel = stringResource(habitIconLabel(key)),
-                            onClick = { onIconChange(key) },
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        habitIcon(key),
-                        contentDescription = stringResource(habitIconLabel(key)),
-                        tint = if (selected) MaterialTheme.colorScheme.primary else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
-                }
+            quickIcons.forEach { key ->
+                HabitIconOption(
+                    key = key,
+                    selected = state.iconKey == key,
+                    onClick = { onIconChange(key) },
+                )
             }
+        }
+        TextButton(
+            onClick = { showAllIcons = true },
+            modifier = Modifier.align(Alignment.End),
+        ) {
+            Text(stringResource(R.string.show_more_icons))
         }
 
         SelectionTitle(R.string.habit_color)
@@ -304,6 +326,41 @@ private fun HabitEditorContent(
             }
         }
         Spacer(Modifier.height(28.dp))
+    }
+}
+
+@Composable
+private fun HabitIconOption(
+    key: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(
+                if (selected) MaterialTheme.colorScheme.primaryContainer else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                },
+            )
+            .then(
+                if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                else Modifier,
+            )
+            .clickable(
+                onClickLabel = stringResource(habitIconLabel(key)),
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            habitIcon(key),
+            contentDescription = stringResource(habitIconLabel(key)),
+            tint = if (selected) MaterialTheme.colorScheme.primary else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        )
     }
 }
 

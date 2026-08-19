@@ -1,6 +1,8 @@
 package dev.bugiel.kiroku.ui.notes
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,20 +11,19 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.AlertDialog
@@ -46,21 +47,24 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.bugiel.kiroku.R
+import dev.bugiel.kiroku.domain.model.NoteAttachment
 import dev.bugiel.kiroku.domain.model.NoteColorKey
+import dev.bugiel.kiroku.ui.markdown.MarkdownContent
 import dev.bugiel.kiroku.ui.util.formatLongDate
 import dev.bugiel.kiroku.ui.util.noteContainerColor
 import java.time.Instant
@@ -75,7 +79,19 @@ fun NoteEditorScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var attachmentToDelete by remember { mutableStateOf<NoteAttachment?>(null) }
+    var attachmentToView by remember { mutableStateOf<NoteAttachment?>(null) }
+    var attachmentToExport by remember { mutableStateOf<NoteAttachment?>(null) }
     val saveError = stringResource(R.string.save_error)
+
+    val attachmentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) {
+        viewModel.addAttachments(it)
+    }
+    val attachmentExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("*/*")) { uri ->
+        val attachment = attachmentToExport
+        attachmentToExport = null
+        if (uri != null && attachment != null) viewModel.exportAttachment(attachment, uri)
+    }
 
     LaunchedEffect(state.hasError) {
         if (state.hasError) snackbarHostState.showSnackbar(saveError)
@@ -106,6 +122,31 @@ fun NoteEditorScreen(
         )
     }
 
+    attachmentToDelete?.let { attachment ->
+        AlertDialog(
+            onDismissRequest = { attachmentToDelete = null },
+            title = { Text(stringResource(R.string.delete_attachment_title)) },
+            text = { Text(stringResource(R.string.delete_attachment_message, attachment.displayName)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    attachmentToDelete = null
+                    viewModel.deleteAttachment(attachment)
+                }) { Text(stringResource(R.string.delete)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { attachmentToDelete = null }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+
+    attachmentToView?.let { attachment ->
+        AttachmentViewer(
+            attachment = attachment,
+            file = viewModel.fileFor(attachment),
+            onDismiss = { attachmentToView = null },
+        )
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -117,6 +158,16 @@ fun NoteEditorScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            attachmentPicker.launch(
+                                arrayOf("image/*", "application/pdf", "text/markdown", "text/plain"),
+                            )
+                        },
+                        enabled = !state.isLoading,
+                    ) {
+                        Icon(Icons.Default.AttachFile, contentDescription = stringResource(R.string.attach_document))
+                    }
                     IconButton(onClick = viewModel::togglePinned, enabled = !state.isLoading) {
                         Icon(
                             Icons.Default.PushPin,
@@ -149,6 +200,13 @@ fun NoteEditorScreen(
                 onTitleChange = viewModel::setTitle,
                 onContentChange = viewModel::setContent,
                 onColorChange = viewModel::setColor,
+                fileFor = viewModel::fileFor,
+                onOpenAttachment = { attachmentToView = it },
+                onExportAttachment = {
+                    attachmentToExport = it
+                    attachmentExporter.launch(it.displayName)
+                },
+                onDeleteAttachment = { attachmentToDelete = it },
                 modifier = Modifier.padding(innerPadding),
             )
         }
@@ -161,11 +219,28 @@ private fun NoteEditorContent(
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     onColorChange: (String) -> Unit,
+    fileFor: (NoteAttachment) -> java.io.File,
+    onOpenAttachment: (NoteAttachment) -> Unit,
+    onExportAttachment: (NoteAttachment) -> Unit,
+    onDeleteAttachment: (NoteAttachment) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val focusRequester = remember { FocusRequester() }
     val creationDate = Instant.ofEpochMilli(state.createdAt).atZone(ZoneId.systemDefault()).toLocalDate()
+    var editorMode by rememberSaveable { mutableStateOf(NoteEditorMode.EDIT) }
+    var editorValue by remember(state.id) {
+        mutableStateOf(TextFieldValue(state.content, selection = TextRange(state.content.length)))
+    }
+
+    LaunchedEffect(state.content) {
+        if (editorValue.text != state.content) {
+            editorValue = editorValue.copy(
+                text = state.content,
+                selection = TextRange(editorValue.selection.end.coerceAtMost(state.content.length)),
+            )
+        }
+    }
 
     Column(
         modifier = modifier
@@ -191,17 +266,57 @@ private fun NoteEditorContent(
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Next),
             shape = MaterialTheme.shapes.large,
         )
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = state.content,
-            onValueChange = onContentChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(320.dp)
-                .focusRequester(focusRequester),
-            placeholder = { Text(stringResource(R.string.note_content_hint)) },
-            textStyle = MaterialTheme.typography.bodyLarge,
-            shape = MaterialTheme.shapes.large,
+        NoteModeSelector(
+            mode = editorMode,
+            onModeChange = { editorMode = it },
+            modifier = Modifier.padding(top = 12.dp),
+        )
+        if (editorMode == NoteEditorMode.EDIT) {
+            MarkdownToolbar(
+                value = editorValue,
+                onValueChange = { formatted ->
+                    editorValue = formatted
+                    onContentChange(formatted.text)
+                },
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            OutlinedTextField(
+                value = editorValue,
+                onValueChange = {
+                    editorValue = it
+                    onContentChange(it.text)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(320.dp)
+                    .focusRequester(focusRequester),
+                placeholder = { Text(stringResource(R.string.note_content_hint)) },
+                textStyle = MaterialTheme.typography.bodyLarge,
+                shape = MaterialTheme.shapes.large,
+            )
+        } else {
+            if (state.content.isBlank()) {
+                Text(
+                    text = stringResource(R.string.markdown_empty_preview),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp).padding(top = 20.dp),
+                )
+            } else {
+                MarkdownContent(
+                    markdown = state.content,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp).padding(vertical = 16.dp),
+                )
+            }
+        }
+
+        AttachmentsSection(
+            attachments = state.attachments,
+            fileFor = fileFor,
+            onOpen = onOpenAttachment,
+            onExport = onExportAttachment,
+            onDelete = onDeleteAttachment,
+            modifier = Modifier.padding(top = 18.dp),
         )
         Spacer(Modifier.height(20.dp))
         HorizontalDivider()

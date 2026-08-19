@@ -30,8 +30,54 @@ object HabitIconKey {
     const val FITNESS = "fitness"
     const val BOOK = "book"
     const val MOON = "moon"
+    const val WALK = "walk"
+    const val RUN = "run"
+    const val BICYCLE = "bicycle"
+    const val MEDITATION = "meditation"
+    const val FOOD = "food"
+    const val MEDICATION = "medication"
+    const val CLEANING = "cleaning"
+    const val WORK = "work"
+    const val STUDY = "study"
+    const val MUSIC = "music"
+    const val SUN = "sun"
+    const val COFFEE = "coffee"
+    const val SMOKE_FREE = "smoke_free"
+    const val SAVINGS = "savings"
+    const val LANGUAGE = "language"
+    const val PETS = "pets"
+    const val WELLNESS = "wellness"
+    const val SPORTS = "sports"
+    const val CODING = "coding"
+    const val CREATIVE = "creative"
+    const val SHOPPING = "shopping"
+    const val CALL = "call"
 
-    val all = listOf(STAR, HEART, WATER, FITNESS, BOOK, MOON)
+    val quick = listOf(STAR, HEART, WATER, FITNESS, BOOK, MOON)
+    val all = quick + listOf(
+        WALK,
+        RUN,
+        BICYCLE,
+        MEDITATION,
+        FOOD,
+        MEDICATION,
+        CLEANING,
+        WORK,
+        STUDY,
+        MUSIC,
+        SUN,
+        COFFEE,
+        SMOKE_FREE,
+        SAVINGS,
+        LANGUAGE,
+        PETS,
+        WELLNESS,
+        SPORTS,
+        CODING,
+        CREATIVE,
+        SHOPPING,
+        CALL,
+    )
 }
 
 object HabitColorKey {

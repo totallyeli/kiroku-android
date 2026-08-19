@@ -19,8 +19,8 @@ android {
         applicationId = "dev.bugiel.kiroku"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -65,6 +65,7 @@ dependencies {
     implementation(libs.androidx.room3.runtime)
     ksp(libs.androidx.room3.compiler)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.commonmark)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
@@ -77,4 +78,3 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.truth)
 }
-

@@ -1,16 +1,20 @@
 package dev.bugiel.kiroku.ui.notes
 
+import android.net.Uri
+import dev.bugiel.kiroku.data.repository.AttachmentRepository
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.bugiel.kiroku.data.repository.NoteRepository
 import dev.bugiel.kiroku.domain.model.Note
 import dev.bugiel.kiroku.domain.model.NoteColorKey
+import dev.bugiel.kiroku.domain.model.NoteAttachment
 import dev.bugiel.kiroku.domain.time.DateClock
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -23,11 +27,12 @@ data class NoteEditorState(
     val updatedAt: Long = 0,
     val isPinned: Boolean = false,
     val colorKey: String = NoteColorKey.NONE,
+    val attachments: List<NoteAttachment> = emptyList(),
     val isLoading: Boolean = true,
     val hasError: Boolean = false,
 ) {
     val isEmpty: Boolean
-        get() = title.isBlank() && content.isBlank()
+        get() = title.isBlank() && content.isBlank() && attachments.isEmpty()
 
     fun toNote() = Note(
         id = id,
@@ -43,12 +48,14 @@ data class NoteEditorState(
 class NoteEditorViewModel(
     noteId: Long,
     private val repository: NoteRepository,
+    private val attachmentRepository: AttachmentRepository,
     private val dateClock: DateClock,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(NoteEditorState())
     val state: StateFlow<NoteEditorState> = mutableState.asStateFlow()
     private val saveMutex = Mutex()
     private var autosaveJob: Job? = null
+    private var attachmentJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -68,6 +75,7 @@ class NoteEditorViewModel(
                     isLoading = false,
                 )
             }
+            if (note != null) observeAttachments(note.id)
         }
     }
 
@@ -75,6 +83,40 @@ class NoteEditorViewModel(
     fun setContent(value: String) = update { copy(content = value) }
     fun togglePinned() = update { copy(isPinned = !isPinned) }
     fun setColor(key: String) = update { copy(colorKey = key) }
+
+    fun addAttachments(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        autosaveJob?.cancel()
+        viewModelScope.launch {
+            runCatching {
+                val noteId = saveMutex.withLock {
+                    val snapshot = mutableState.value
+                    if (snapshot.id == 0L) persistLocked(snapshot) else snapshot.id
+                }
+                uris.forEachIndexed { index, uri ->
+                    attachmentRepository.add(noteId, uri, dateClock.nowMillis() + index)
+                }
+            }.onFailure {
+                mutableState.update { it.copy(hasError = true) }
+            }
+        }
+    }
+
+    fun deleteAttachment(attachment: NoteAttachment) {
+        viewModelScope.launch {
+            runCatching { attachmentRepository.delete(attachment) }
+                .onFailure { mutableState.update { it.copy(hasError = true) } }
+        }
+    }
+
+    fun exportAttachment(attachment: NoteAttachment, destination: Uri) {
+        viewModelScope.launch {
+            runCatching { attachmentRepository.export(attachment, destination) }
+                .onFailure { mutableState.update { it.copy(hasError = true) } }
+        }
+    }
+
+    fun fileFor(attachment: NoteAttachment) = attachmentRepository.fileFor(attachment)
 
     private fun update(transform: NoteEditorState.() -> NoteEditorState) {
         if (mutableState.value.isLoading) return
@@ -98,7 +140,10 @@ class NoteEditorViewModel(
                 saveMutex.withLock {
                     val snapshot = mutableState.value
                     if (snapshot.isEmpty) {
-                        if (snapshot.id != 0L) repository.delete(snapshot.toNote())
+                        if (snapshot.id != 0L) {
+                            repository.delete(snapshot.toNote())
+                            attachmentRepository.deleteStoredFiles(snapshot.attachments)
+                        }
                     } else {
                         persistLocked(snapshot)
                     }
@@ -112,7 +157,10 @@ class NoteEditorViewModel(
         autosaveJob?.cancel()
         viewModelScope.launch {
             val snapshot = mutableState.value
-            if (snapshot.id != 0L) repository.delete(snapshot.toNote())
+            if (snapshot.id != 0L) {
+                repository.delete(snapshot.toNote())
+                attachmentRepository.deleteStoredFiles(snapshot.attachments)
+            }
             onDeleted()
         }
     }
@@ -128,10 +176,20 @@ class NoteEditorViewModel(
         }
     }
 
-    private suspend fun persistLocked(snapshot: NoteEditorState) {
+    private suspend fun persistLocked(snapshot: NoteEditorState): Long {
         val updated = snapshot.copy(updatedAt = dateClock.nowMillis(), hasError = false)
         val id = repository.save(updated.toNote())
         mutableState.value = updated.copy(id = id)
+        if (snapshot.id == 0L) observeAttachments(id)
+        return id
+    }
+
+    private fun observeAttachments(noteId: Long) {
+        attachmentJob?.cancel()
+        attachmentJob = viewModelScope.launch {
+            attachmentRepository.observeForNote(noteId).collect { attachments ->
+                mutableState.update { it.copy(attachments = attachments) }
+            }
+        }
     }
 }
-

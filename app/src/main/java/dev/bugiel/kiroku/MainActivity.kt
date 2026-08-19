@@ -22,7 +22,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -44,7 +43,6 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import dev.bugiel.kiroku.data.repository.ThemeMode
 import dev.bugiel.kiroku.data.repository.ThemeSettings
 import dev.bugiel.kiroku.di.AppContainer
-import dev.bugiel.kiroku.ui.components.ThemeSettingsDialog
 import dev.bugiel.kiroku.ui.habits.HabitDetailScreen
 import dev.bugiel.kiroku.ui.habits.HabitDetailViewModel
 import dev.bugiel.kiroku.ui.habits.HabitEditorScreen
@@ -55,10 +53,11 @@ import dev.bugiel.kiroku.ui.notes.NoteEditorScreen
 import dev.bugiel.kiroku.ui.notes.NoteEditorViewModel
 import dev.bugiel.kiroku.ui.notes.NotesScreen
 import dev.bugiel.kiroku.ui.notes.NotesViewModel
+import dev.bugiel.kiroku.ui.settings.SettingsDialog
+import dev.bugiel.kiroku.ui.settings.SettingsViewModel
 import dev.bugiel.kiroku.ui.theme.KirokuTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val reminderHabitId = MutableStateFlow<Long?>(null)
@@ -100,8 +99,17 @@ private fun KirokuRoot(
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
     }
-    var showThemeDialog by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+    var showSettingsDialog by remember { mutableStateOf(false) }
+    val settingsViewModel: SettingsViewModel = viewModel(
+        factory = viewModelFactory {
+            initializer {
+                SettingsViewModel(
+                    settingsRepository = container.settingsRepository,
+                    updateRepository = container.appUpdateRepository,
+                )
+            }
+        },
+    )
     val lifecycleOwner = LocalLifecycleOwner.current
     val view = LocalView.current
 
@@ -131,16 +139,12 @@ private fun KirokuRoot(
             container = container,
             openHabitId = openHabitId,
             onHabitOpened = onHabitOpened,
-            onOpenSettings = { showThemeDialog = true },
+            onOpenSettings = { showSettingsDialog = true },
         )
-        if (showThemeDialog) {
-            ThemeSettingsDialog(
-                settings = settings,
-                onModeChange = { scope.launch { container.settingsRepository.setThemeMode(it) } },
-                onDynamicColorsChange = {
-                    scope.launch { container.settingsRepository.setDynamicColors(it) }
-                },
-                onDismiss = { showThemeDialog = false },
+        if (showSettingsDialog) {
+            SettingsDialog(
+                viewModel = settingsViewModel,
+                onDismiss = { showSettingsDialog = false },
             )
         }
     }
@@ -217,7 +221,12 @@ private fun KirokuNavigation(
                     key = "note-$noteId",
                     factory = viewModelFactory {
                         initializer {
-                            NoteEditorViewModel(noteId, container.noteRepository, container.dateClock)
+                            NoteEditorViewModel(
+                                noteId = noteId,
+                                repository = container.noteRepository,
+                                attachmentRepository = container.attachmentRepository,
+                                dateClock = container.dateClock,
+                            )
                         }
                     },
                 )

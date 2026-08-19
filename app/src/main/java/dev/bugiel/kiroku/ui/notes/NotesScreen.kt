@@ -1,5 +1,7 @@
 package dev.bugiel.kiroku.ui.notes
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +23,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,15 +33,20 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,12 +67,42 @@ fun NotesScreen(
 ) {
     val notes by viewModel.notes.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
+    val importState by viewModel.importState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val finishedImport = importState as? NoteImportState.Finished
+    val importedCount = finishedImport?.imported ?: 0
+    val failedCount = finishedImport?.failed ?: 0
+    val importedMessage = stringResource(
+        R.string.notes_import_result,
+        pluralStringResource(R.plurals.notes_imported, importedCount, importedCount),
+        pluralStringResource(R.plurals.notes_import_failed, failedCount, failedCount),
+    )
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) {
+        viewModel.importNotes(it)
+    }
+
+    LaunchedEffect(importState) {
+        if (importState is NoteImportState.Finished) {
+            snackbarHostState.showSnackbar(importedMessage)
+            viewModel.consumeImportResult()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.notes), fontWeight = FontWeight.SemiBold) },
                 actions = {
+                    IconButton(
+                        onClick = { importLauncher.launch(arrayOf("text/plain", "text/markdown")) },
+                        enabled = importState !is NoteImportState.Importing,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.UploadFile,
+                            contentDescription = stringResource(R.string.import_notes),
+                        )
+                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(
                             imageVector = Icons.Default.Settings,
@@ -214,4 +252,3 @@ private fun NoteCard(
         }
     }
 }
-
