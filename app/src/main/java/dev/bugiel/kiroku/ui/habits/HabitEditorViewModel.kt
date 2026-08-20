@@ -6,6 +6,8 @@ import dev.bugiel.kiroku.data.repository.HabitRepository
 import dev.bugiel.kiroku.domain.model.Habit
 import dev.bugiel.kiroku.domain.model.HabitColorKey
 import dev.bugiel.kiroku.domain.model.HabitIconKey
+import dev.bugiel.kiroku.domain.model.HabitRepeatType
+import dev.bugiel.kiroku.domain.model.HabitWeekdays
 import dev.bugiel.kiroku.domain.time.DateClock
 import dev.bugiel.kiroku.reminder.HabitReminderScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,8 +23,12 @@ data class HabitEditorState(
     val colorKey: String = HabitColorKey.GREEN,
     val createdEpochDay: Long = 0,
     val dueTimeMinutes: Int? = null,
+    val repeatType: String = HabitRepeatType.DAILY,
+    val repeatIntervalDays: Int = 1,
+    val repeatWeekdaysMask: Int = HabitWeekdays.ALL,
     val isLoading: Boolean = true,
     val showNameError: Boolean = false,
+    val showScheduleError: Boolean = false,
     val hasSaveError: Boolean = false,
 ) {
     fun toHabit() = Habit(
@@ -33,6 +39,9 @@ data class HabitEditorState(
         colorKey = colorKey,
         createdEpochDay = createdEpochDay,
         dueTimeMinutes = dueTimeMinutes,
+        repeatType = repeatType,
+        repeatIntervalDays = repeatIntervalDays,
+        repeatWeekdaysMask = repeatWeekdaysMask,
     )
 }
 
@@ -59,6 +68,9 @@ class HabitEditorViewModel(
                     colorKey = habit.colorKey,
                     createdEpochDay = habit.createdEpochDay,
                     dueTimeMinutes = habit.dueTimeMinutes,
+                    repeatType = habit.repeatType,
+                    repeatIntervalDays = habit.repeatIntervalDays,
+                    repeatWeekdaysMask = habit.repeatWeekdaysMask,
                     isLoading = false,
                 )
             }
@@ -70,11 +82,24 @@ class HabitEditorViewModel(
     fun setIcon(key: String) = setState { copy(iconKey = key) }
     fun setColor(key: String) = setState { copy(colorKey = key) }
     fun setDueTime(minutes: Int?) = setState { copy(dueTimeMinutes = minutes) }
+    fun setRepeatType(type: String) = setState {
+        copy(repeatType = type, showScheduleError = false, hasSaveError = false)
+    }
+    fun setRepeatInterval(days: Int) = setState {
+        copy(repeatIntervalDays = days.coerceIn(MIN_REPEAT_INTERVAL, MAX_REPEAT_INTERVAL))
+    }
+    fun toggleWeekday(dayMask: Int) = setState {
+        copy(repeatWeekdaysMask = repeatWeekdaysMask xor dayMask, showScheduleError = false)
+    }
 
     fun save(onSaved: (Long) -> Unit) {
         val snapshot = mutableState.value
         if (snapshot.name.isBlank()) {
             mutableState.value = snapshot.copy(showNameError = true)
+            return
+        }
+        if (snapshot.repeatType == HabitRepeatType.WEEKLY && snapshot.repeatWeekdaysMask == 0) {
+            mutableState.value = snapshot.copy(showScheduleError = true)
             return
         }
         viewModelScope.launch {
@@ -100,5 +125,10 @@ class HabitEditorViewModel(
 
     private fun setState(transform: HabitEditorState.() -> HabitEditorState) {
         if (!mutableState.value.isLoading) mutableState.value = mutableState.value.transform()
+    }
+
+    companion object {
+        const val MIN_REPEAT_INTERVAL = 1
+        const val MAX_REPEAT_INTERVAL = 365
     }
 }

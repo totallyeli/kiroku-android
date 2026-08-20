@@ -35,5 +35,16 @@ class HabitsViewModel(
             )
         }
     }
-}
 
+    fun completeYesterday(item: HabitWithStatus) {
+        if (!item.isScheduledYesterday || item.isCompletedYesterday) return
+        viewModelScope.launch {
+            repository.setCompletion(
+                habitId = item.habit.id,
+                epochDay = todayEpochDay.value - 1,
+                completed = true,
+                timestamp = dateClock.nowMillis(),
+            )
+        }
+    }
+}

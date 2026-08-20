@@ -183,7 +183,7 @@ private fun readMarkdown(file: File): String {
             val count = input.read(buffer)
             if (count < 0) break
             total += count
-            require(total <= MAX_MARKDOWN_VIEW_BYTES) { "Die Markdown-Datei ist zu groß." }
+            require(total <= MAX_MARKDOWN_VIEW_BYTES) { "The Markdown file is too large." }
             output.write(buffer, 0, count)
         }
         return output.toByteArray().toString(Charsets.UTF_8).removePrefix("\uFEFF")

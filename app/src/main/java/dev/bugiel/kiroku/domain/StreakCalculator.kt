@@ -41,5 +41,46 @@ object StreakCalculator {
             totalCompletedDays = days.size,
         )
     }
-}
 
+    fun calculateScheduled(
+        completedEpochDays: Iterable<Long>,
+        todayEpochDay: Long,
+        createdEpochDay: Long,
+        isScheduledOn: (Long) -> Boolean,
+    ): HabitStats {
+        val completed = completedEpochDays.toSortedSet()
+        val scheduledThroughToday = (createdEpochDay..todayEpochDay).filter(isScheduledOn)
+        if (scheduledThroughToday.isEmpty()) {
+            return HabitStats(totalCompletedDays = completed.size)
+        }
+
+        val lastCompletedAnchor = scheduledThroughToday.asReversed().firstOrNull { occurrence ->
+            occurrence < todayEpochDay || occurrence in completed
+        }
+        var current = 0
+        if (lastCompletedAnchor != null && lastCompletedAnchor in completed) {
+            val anchorIndex = scheduledThroughToday.indexOf(lastCompletedAnchor)
+            for (index in anchorIndex downTo 0) {
+                if (scheduledThroughToday[index] !in completed) break
+                current++
+            }
+        }
+
+        var longest = 0
+        var run = 0
+        scheduledThroughToday.forEach { occurrence ->
+            if (occurrence in completed) {
+                run++
+                longest = maxOf(longest, run)
+            } else {
+                run = 0
+            }
+        }
+
+        return HabitStats(
+            currentStreak = current,
+            longestStreak = longest,
+            totalCompletedDays = completed.size,
+        )
+    }
+}

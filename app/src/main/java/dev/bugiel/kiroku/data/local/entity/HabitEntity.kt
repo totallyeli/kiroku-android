@@ -1,5 +1,6 @@
 package dev.bugiel.kiroku.data.local.entity
 
+import androidx.room3.ColumnInfo
 import androidx.room3.Entity
 import androidx.room3.PrimaryKey
 import dev.bugiel.kiroku.domain.model.Habit
@@ -15,6 +16,12 @@ data class HabitEntity(
     val createdEpochDay: Long,
     val isActive: Boolean,
     val dueTimeMinutes: Int?,
+    @ColumnInfo(defaultValue = "'daily'")
+    val repeatType: String = "daily",
+    @ColumnInfo(defaultValue = "1")
+    val repeatIntervalDays: Int = 1,
+    @ColumnInfo(defaultValue = "127")
+    val repeatWeekdaysMask: Int = 127,
 )
 
 fun HabitEntity.toDomain() = Habit(
@@ -26,6 +33,9 @@ fun HabitEntity.toDomain() = Habit(
     createdEpochDay = createdEpochDay,
     isActive = isActive,
     dueTimeMinutes = dueTimeMinutes,
+    repeatType = repeatType,
+    repeatIntervalDays = repeatIntervalDays,
+    repeatWeekdaysMask = repeatWeekdaysMask,
 )
 
 fun Habit.toEntity() = HabitEntity(
@@ -37,4 +47,7 @@ fun Habit.toEntity() = HabitEntity(
     createdEpochDay = createdEpochDay,
     isActive = isActive,
     dueTimeMinutes = dueTimeMinutes,
+    repeatType = repeatType,
+    repeatIntervalDays = repeatIntervalDays,
+    repeatWeekdaysMask = repeatWeekdaysMask,
 )

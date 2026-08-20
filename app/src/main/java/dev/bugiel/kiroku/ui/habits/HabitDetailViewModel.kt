@@ -6,6 +6,7 @@ import dev.bugiel.kiroku.data.repository.HabitRepository
 import dev.bugiel.kiroku.domain.StreakCalculator
 import dev.bugiel.kiroku.domain.model.Habit
 import dev.bugiel.kiroku.domain.model.HabitStats
+import dev.bugiel.kiroku.domain.model.isScheduledOn
 import dev.bugiel.kiroku.domain.time.DateClock
 import dev.bugiel.kiroku.domain.time.TodayProvider
 import java.time.LocalDate
@@ -42,7 +43,14 @@ class HabitDetailViewModel(
         HabitDetailState(
             habit = habit,
             completedDays = days,
-            stats = StreakCalculator.calculate(days, today),
+            stats = habit?.let {
+                StreakCalculator.calculateScheduled(
+                    completedEpochDays = days,
+                    todayEpochDay = today,
+                    createdEpochDay = it.createdEpochDay,
+                    isScheduledOn = it::isScheduledOn,
+                )
+            } ?: HabitStats(),
             todayEpochDay = today,
             visibleMonth = month,
         )
@@ -60,7 +68,11 @@ class HabitDetailViewModel(
     fun toggleDate(epochDay: Long) {
         val snapshot = state.value
         val habit = snapshot.habit ?: return
-        if (epochDay > snapshot.todayEpochDay || epochDay < habit.createdEpochDay) return
+        if (
+            epochDay > snapshot.todayEpochDay ||
+            epochDay < habit.createdEpochDay ||
+            (!habit.isScheduledOn(epochDay) && epochDay !in snapshot.completedDays)
+        ) return
         viewModelScope.launch {
             repository.setCompletion(
                 habitId = habitId,
@@ -71,4 +83,3 @@ class HabitDetailViewModel(
         }
     }
 }
-

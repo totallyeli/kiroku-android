@@ -2,6 +2,8 @@ package dev.bugiel.kiroku.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import dev.bugiel.kiroku.data.repository.SettingsRepository
 import dev.bugiel.kiroku.data.repository.ThemeMode
 import dev.bugiel.kiroku.data.repository.ThemeSettings
@@ -11,6 +13,7 @@ import dev.bugiel.kiroku.update.InstallResult
 import dev.bugiel.kiroku.update.UpdateCheckResult
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -30,6 +33,12 @@ sealed interface UpdateUiState {
     data class Failed(val message: String) : UpdateUiState
 }
 
+enum class AppLanguage(val languageTag: String?) {
+    SYSTEM(null),
+    ENGLISH("en"),
+    GERMAN("de"),
+}
+
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val updateRepository: AppUpdateRepository,
@@ -38,6 +47,17 @@ class SettingsViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeSettings())
     val currentVersionName: String = updateRepository.currentVersionName
     val updateState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
+    private val mutableAppLanguage = MutableStateFlow(currentAppLanguage())
+    val appLanguage: StateFlow<AppLanguage> = mutableAppLanguage.asStateFlow()
+
+    fun setAppLanguage(language: AppLanguage) {
+        if (language == mutableAppLanguage.value) return
+        mutableAppLanguage.value = language
+        AppCompatDelegate.setApplicationLocales(
+            language.languageTag?.let(LocaleListCompat::forLanguageTags)
+                ?: LocaleListCompat.getEmptyLocaleList(),
+        )
+    }
 
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
@@ -88,5 +108,14 @@ class SettingsViewModel(
                 }
             }
             .onFailure { updateState.value = UpdateUiState.Failed(it.message.orEmpty()) }
+    }
+
+    private fun currentAppLanguage(): AppLanguage {
+        val language = AppCompatDelegate.getApplicationLocales()[0]?.language
+        return when (language) {
+            AppLanguage.ENGLISH.languageTag -> AppLanguage.ENGLISH
+            AppLanguage.GERMAN.languageTag -> AppLanguage.GERMAN
+            else -> AppLanguage.SYSTEM
+        }
     }
 }

@@ -7,6 +7,7 @@ import dev.bugiel.kiroku.data.local.entity.toEntity
 import dev.bugiel.kiroku.domain.StreakCalculator
 import dev.bugiel.kiroku.domain.model.Habit
 import dev.bugiel.kiroku.domain.model.HabitWithStatus
+import dev.bugiel.kiroku.domain.model.isScheduledOn
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -32,11 +33,20 @@ class OfflineHabitRepository(
     ) { habits, completions ->
         val byHabit = completions.groupBy { it.habitId }
         habits.map { entity ->
+            val habit = entity.toDomain()
             val days = byHabit[entity.id].orEmpty().mapTo(mutableSetOf()) { it.epochDay }
             HabitWithStatus(
-                habit = entity.toDomain(),
+                habit = habit,
                 isCompletedToday = todayEpochDay in days,
-                stats = StreakCalculator.calculate(days, todayEpochDay),
+                stats = StreakCalculator.calculateScheduled(
+                    completedEpochDays = days,
+                    todayEpochDay = todayEpochDay,
+                    createdEpochDay = habit.createdEpochDay,
+                    isScheduledOn = habit::isScheduledOn,
+                ),
+                isScheduledToday = habit.isScheduledOn(todayEpochDay),
+                isScheduledYesterday = habit.isScheduledOn(todayEpochDay - 1),
+                isCompletedYesterday = todayEpochDay - 1 in days,
             )
         }
     }

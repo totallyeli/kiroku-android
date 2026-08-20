@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.net.toUri
 import dev.bugiel.kiroku.domain.model.Habit
+import dev.bugiel.kiroku.domain.model.isScheduledOn
 import dev.bugiel.kiroku.domain.time.HabitReminderTime
 import java.time.ZonedDateTime
 
@@ -29,6 +30,7 @@ class AndroidHabitReminderScheduler(
         val triggerAt = HabitReminderTime.nextOccurrence(
             dueTimeMinutes = dueTimeMinutes,
             now = ZonedDateTime.now(),
+            isScheduledOn = habit::isScheduledOn,
         ).toInstant().toEpochMilli()
 
         alarmManager.setAndAllowWhileIdle(

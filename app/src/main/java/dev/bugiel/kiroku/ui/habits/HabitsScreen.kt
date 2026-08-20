@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
@@ -63,7 +64,9 @@ fun HabitsScreen(
 ) {
     val habits by viewModel.habits.collectAsStateWithLifecycle()
     val todayEpochDay by viewModel.todayEpochDay.collectAsStateWithLifecycle()
-    val completed = habits.count { it.isCompletedToday }
+    val todayHabits = habits.filter { it.isScheduledToday }
+    val missedYesterday = habits.filter { it.isScheduledYesterday && !it.isCompletedYesterday }
+    val completed = todayHabits.count { it.isCompletedToday }
 
     Scaffold(
         topBar = {
@@ -92,19 +95,97 @@ fun HabitsScreen(
                 ProgressHeader(
                     date = LocalDate.ofEpochDay(todayEpochDay),
                     completed = completed,
-                    total = habits.size,
+                    total = todayHabits.size,
                 )
+            }
+            if (missedYesterday.isNotEmpty()) {
+                item { MissedYesterdayHeader() }
+                items(missedYesterday, key = { "yesterday-${it.habit.id}" }) { item ->
+                    MissedYesterdayCard(
+                        item = item,
+                        onClick = { onOpenHabit(item.habit.id) },
+                        onComplete = { viewModel.completeYesterday(item) },
+                    )
+                }
             }
             if (habits.isEmpty()) {
                 item { HabitsEmptyState() }
+            } else if (todayHabits.isEmpty()) {
+                item { NoHabitsScheduledState() }
             } else {
-                items(habits, key = { it.habit.id }) { item ->
+                items(todayHabits, key = { "today-${it.habit.id}" }) { item ->
                     HabitCard(
                         item = item,
                         onClick = { onOpenHabit(item.habit.id) },
                         onToggle = { viewModel.toggleToday(item) },
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MissedYesterdayHeader() {
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) {
+        Text(
+            text = stringResource(R.string.missed_yesterday),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = stringResource(R.string.missed_yesterday_explanation),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun MissedYesterdayCard(
+    item: HabitWithStatus,
+    onClick: () -> Unit,
+    onComplete: () -> Unit,
+) {
+    val color = habitColor(item.habit.colorKey)
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier.size(44.dp).background(color.copy(alpha = 0.16f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(habitIcon(item.habit.iconKey), contentDescription = null, tint = color)
+            }
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                Text(
+                    text = item.habit.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = stringResource(R.string.complete_for_yesterday),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+            FilledIconButton(
+                onClick = onComplete,
+                modifier = Modifier.size(48.dp),
+                colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
+                    containerColor = color,
+                    contentColor = Color.White,
+                ),
+            ) {
+                Icon(Icons.Default.Check, contentDescription = stringResource(R.string.complete_for_yesterday))
             }
         }
     }
@@ -162,6 +243,33 @@ private fun HabitsEmptyState() {
             text = stringResource(R.string.no_habits_message),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun NoHabitsScheduledState() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier.size(64.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Default.History, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.no_habits_scheduled_title),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = stringResource(R.string.no_habits_scheduled_message),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp),
         )
     }
 }

@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -156,8 +157,9 @@ private fun CodeBlock(code: String) {
 private fun inlineContent(parent: Node): AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
     val codeBackground = MaterialTheme.colorScheme.surfaceContainerHighest
+    val imageLabel = stringResource(dev.bugiel.kiroku.R.string.markdown_image_label)
     return AnnotatedString.Builder().apply {
-        appendInlineChildren(parent, linkColor, codeBackground)
+        appendInlineChildren(parent, linkColor, codeBackground, imageLabel)
     }.toAnnotatedString()
 }
 
@@ -165,32 +167,33 @@ private fun AnnotatedString.Builder.appendInlineChildren(
     parent: Node,
     linkColor: Color,
     codeBackground: Color,
+    imageLabel: String,
 ) {
     var child = parent.firstChild
     while (child != null) {
         when (child) {
             is MarkdownText -> append(child.literal)
             is Emphasis -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                appendInlineChildren(child, linkColor, codeBackground)
+                appendInlineChildren(child, linkColor, codeBackground, imageLabel)
             }
             is StrongEmphasis -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                appendInlineChildren(child, linkColor, codeBackground)
+                appendInlineChildren(child, linkColor, codeBackground, imageLabel)
             }
             is Code -> withStyle(SpanStyle(fontFamily = FontFamily.Monospace, background = codeBackground)) {
                 append(child.literal)
             }
             is Link -> withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {
-                appendInlineChildren(child, linkColor, codeBackground)
+                appendInlineChildren(child, linkColor, codeBackground, imageLabel)
             }
             is Image -> {
-                append("[Bild: ")
+                append("[$imageLabel: ")
                 appendPlainChildren(child)
                 append("]")
             }
             is SoftLineBreak -> append(' ')
             is HardLineBreak -> append('\n')
             is HtmlInline -> append(child.literal)
-            else -> appendInlineChildren(child, linkColor, codeBackground)
+            else -> appendInlineChildren(child, linkColor, codeBackground, imageLabel)
         }
         child = child.next
     }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0 — 2026-08-20
+
+- Added full English and German interfaces with an in-app language selector and system-language support
+- Added habit schedules for selected weekdays or configurable intervals such as every two days
+- Updated streaks, calendar availability, progress, and reminders to follow each habit's schedule
+- Added a **Missed yesterday** action so a scheduled habit can be completed after midnight while retaining yesterday's date
+- Added the version 4 database migration with daily defaults and no deletion of existing notes, attachments, habits, or completions
+
 ## 1.1.0 — 2026-08-20
 
 - Added update checks in Settings with GitHub Release comparison, verified APK downloads, and Android installer handoff

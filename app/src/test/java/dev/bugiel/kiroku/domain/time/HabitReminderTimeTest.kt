@@ -44,4 +44,16 @@ class HabitReminderTimeTest {
         assertThat(reminder).isEqualTo(ZonedDateTime.of(2026, 3, 29, 9, 0, 0, 0, zone))
         assertThat(reminder.offset).isNotEqualTo(now.offset)
     }
+
+    @Test
+    fun `reminder skips days outside the habit schedule`() {
+        val now = ZonedDateTime.of(2026, 8, 20, 8, 15, 0, 0, zone)
+        val saturday = now.toLocalDate().plusDays(2).toEpochDay()
+
+        val reminder = HabitReminderTime.nextOccurrence(9 * 60, now) { epochDay ->
+            epochDay == saturday
+        }
+
+        assertThat(reminder).isEqualTo(ZonedDateTime.of(2026, 8, 22, 9, 0, 0, 0, zone))
+    }
 }

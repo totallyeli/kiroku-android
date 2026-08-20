@@ -39,10 +39,10 @@ fun ContentResolver.readBytes(uri: Uri, maximumBytes: Int): ByteArray {
             val count = input.read(buffer)
             if (count < 0) break
             total += count
-            require(total <= maximumBytes) { "Die Datei ist zu groß." }
+            require(total <= maximumBytes) { "The file is too large." }
             output.write(buffer, 0, count)
         }
         return output.toByteArray()
     }
-    error("Die Datei konnte nicht geöffnet werden.")
+    error("The file could not be opened.")
 }

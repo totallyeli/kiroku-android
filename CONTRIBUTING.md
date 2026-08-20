@@ -10,7 +10,7 @@ English is the required language for repository documentation and development co
 - Commit messages, pull requests, and issues
 - Changelog entries and GitHub Release notes
 
-User-facing app text is exempt from this repository-language rule. Kiroku currently ships with a German interface, which must remain unchanged until multilingual support is implemented as a dedicated feature. Localization resources and explicit locale-specific test cases may use their target language; a language-specific test should state why that locale is required.
+User-facing localized text is exempt from this repository-language rule. English is the default locale and new user-facing text must always be added to the English resource catalog. Every supported locale must contain the same resource keys; Kiroku currently supports English and German. Explicit locale-specific tests and localization resources may use their target language.
 
 Before submitting a change, search the maintained files for unintended non-English text and run:
 

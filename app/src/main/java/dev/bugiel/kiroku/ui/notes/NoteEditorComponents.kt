@@ -77,6 +77,9 @@ fun MarkdownToolbar(
     onValueChange: (TextFieldValue) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val textPlaceholder = stringResource(R.string.markdown_text_placeholder)
+    val codePlaceholder = stringResource(R.string.markdown_code_placeholder)
+    val linkPlaceholder = stringResource(R.string.markdown_link_placeholder)
     val actions = listOf(
         Triple(MarkdownFormatAction.BOLD, Icons.Default.FormatBold, R.string.format_bold),
         Triple(MarkdownFormatAction.ITALIC, Icons.Default.FormatItalic, R.string.format_italic),
@@ -92,7 +95,17 @@ fun MarkdownToolbar(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         items(actions, key = { it.first.name }) { (action, icon, description) ->
-            IconButton(onClick = { onValueChange(applyMarkdownFormat(value, action)) }) {
+            IconButton(onClick = {
+                onValueChange(
+                    applyMarkdownFormat(
+                        value = value,
+                        action = action,
+                        textPlaceholder = textPlaceholder,
+                        codePlaceholder = codePlaceholder,
+                        linkPlaceholder = linkPlaceholder,
+                    ),
+                )
+            }) {
                 Icon(icon, contentDescription = stringResource(description))
             }
         }

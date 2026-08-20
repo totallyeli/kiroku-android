@@ -37,8 +37,8 @@ class OfflineAttachmentRepository(
         val resolver = applicationContext.contentResolver
         val metadata = resolver.documentMetadata(uri)
         val mimeType = normalizedMimeType(metadata.displayName, metadata.mimeType)
-        require(isSupported(metadata.displayName, mimeType)) { "Dieser Dateityp wird nicht unterstützt." }
-        metadata.sizeBytes?.let { require(it <= MAX_ATTACHMENT_BYTES) { "Die Datei ist zu groß." } }
+        require(isSupported(metadata.displayName, mimeType)) { "This file type is not supported." }
+        metadata.sizeBytes?.let { require(it <= MAX_ATTACHMENT_BYTES) { "The file is too large." } }
 
         attachmentDirectory.mkdirs()
         val extension = metadata.displayName.substringAfterLast('.', "")
@@ -58,13 +58,13 @@ class OfflineAttachmentRepository(
                         val count = input.read(buffer)
                         if (count < 0) break
                         total += count
-                        require(total <= MAX_ATTACHMENT_BYTES) { "Die Datei ist zu groß." }
+                        require(total <= MAX_ATTACHMENT_BYTES) { "The file is too large." }
                         output.write(buffer, 0, count)
                     }
                     total
                 }
-            } ?: error("Die Datei konnte nicht geöffnet werden.")
-            check(temporary.renameTo(target)) { "Die Datei konnte nicht gespeichert werden." }
+            } ?: error("The file could not be opened.")
+            check(temporary.renameTo(target)) { "The file could not be saved." }
 
             val entity = NoteAttachmentEntity(
                 noteId = noteId,
@@ -95,10 +95,10 @@ class OfflineAttachmentRepository(
 
     override suspend fun export(attachment: NoteAttachment, destination: Uri) = withContext(Dispatchers.IO) {
         val source = fileFor(attachment)
-        check(source.isFile) { "Die Anlage wurde nicht gefunden." }
+        check(source.isFile) { "The attachment was not found." }
         applicationContext.contentResolver.openOutputStream(destination, "w")?.use { output ->
             source.inputStream().buffered().use { input -> input.copyTo(output) }
-        } ?: error("Das Ziel konnte nicht geöffnet werden.")
+        } ?: error("The destination could not be opened.")
         Unit
     }
 

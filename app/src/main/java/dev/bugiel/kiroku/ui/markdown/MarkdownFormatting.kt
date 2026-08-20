@@ -14,15 +14,21 @@ enum class MarkdownFormatAction {
     LINK,
 }
 
-fun applyMarkdownFormat(value: TextFieldValue, action: MarkdownFormatAction): TextFieldValue = when (action) {
-    MarkdownFormatAction.BOLD -> wrap(value, "**", "**", "Text")
-    MarkdownFormatAction.ITALIC -> wrap(value, "*", "*", "Text")
-    MarkdownFormatAction.CODE -> wrap(value, "`", "`", "Code")
+fun applyMarkdownFormat(
+    value: TextFieldValue,
+    action: MarkdownFormatAction,
+    textPlaceholder: String = "Text",
+    codePlaceholder: String = "Code",
+    linkPlaceholder: String = "Link text",
+): TextFieldValue = when (action) {
+    MarkdownFormatAction.BOLD -> wrap(value, "**", "**", textPlaceholder)
+    MarkdownFormatAction.ITALIC -> wrap(value, "*", "*", textPlaceholder)
+    MarkdownFormatAction.CODE -> wrap(value, "`", "`", codePlaceholder)
     MarkdownFormatAction.HEADING -> prefixCurrentLine(value, "# ")
     MarkdownFormatAction.BULLET_LIST -> prefixCurrentLine(value, "- ")
     MarkdownFormatAction.TASK_LIST -> prefixCurrentLine(value, "- [ ] ")
     MarkdownFormatAction.QUOTE -> prefixCurrentLine(value, "> ")
-    MarkdownFormatAction.LINK -> link(value)
+    MarkdownFormatAction.LINK -> link(value, linkPlaceholder)
 }
 
 private fun wrap(value: TextFieldValue, prefix: String, suffix: String, placeholder: String): TextFieldValue {
@@ -50,10 +56,10 @@ private fun prefixCurrentLine(value: TextFieldValue, prefix: String): TextFieldV
     )
 }
 
-private fun link(value: TextFieldValue): TextFieldValue {
+private fun link(value: TextFieldValue, placeholder: String): TextFieldValue {
     val start = value.selection.min
     val end = value.selection.max
-    val label = value.text.substring(start, end).ifEmpty { "Linktext" }
+    val label = value.text.substring(start, end).ifEmpty { placeholder }
     val url = "https://"
     val inserted = "[$label]($url)"
     return value.copy(

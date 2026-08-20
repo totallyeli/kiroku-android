@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import dev.bugiel.kiroku.KirokuApplication
+import dev.bugiel.kiroku.domain.model.isScheduledOn
 import kotlinx.coroutines.launch
 
 class HabitReminderReceiver : BroadcastReceiver() {
@@ -22,7 +23,7 @@ class HabitReminderReceiver : BroadcastReceiver() {
                 }
 
                 val today = application.container.dateClock.today().toEpochDay()
-                if (!application.container.habitRepository.isCompleted(habitId, today)) {
+                if (habit.isScheduledOn(today) && !application.container.habitRepository.isCompleted(habitId, today)) {
                     HabitReminderNotifications.show(context, habit)
                 }
                 application.container.habitReminderScheduler.schedule(habit)

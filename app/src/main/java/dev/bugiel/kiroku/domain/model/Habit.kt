@@ -1,5 +1,7 @@
 package dev.bugiel.kiroku.domain.model
 
+import java.time.LocalDate
+
 data class Habit(
     val id: Long = 0,
     val name: String,
@@ -9,12 +11,18 @@ data class Habit(
     val createdEpochDay: Long,
     val isActive: Boolean = true,
     val dueTimeMinutes: Int? = null,
+    val repeatType: String = HabitRepeatType.DAILY,
+    val repeatIntervalDays: Int = 1,
+    val repeatWeekdaysMask: Int = HabitWeekdays.ALL,
 )
 
 data class HabitWithStatus(
     val habit: Habit,
     val isCompletedToday: Boolean,
     val stats: HabitStats,
+    val isScheduledToday: Boolean = true,
+    val isScheduledYesterday: Boolean = true,
+    val isCompletedYesterday: Boolean = false,
 )
 
 data class HabitStats(
@@ -22,6 +30,38 @@ data class HabitStats(
     val longestStreak: Int = 0,
     val totalCompletedDays: Int = 0,
 )
+
+object HabitRepeatType {
+    const val DAILY = "daily"
+    const val WEEKLY = "weekly"
+    const val INTERVAL = "interval"
+
+    val all = listOf(DAILY, WEEKLY, INTERVAL)
+}
+
+object HabitWeekdays {
+    const val MONDAY = 1 shl 0
+    const val TUESDAY = 1 shl 1
+    const val WEDNESDAY = 1 shl 2
+    const val THURSDAY = 1 shl 3
+    const val FRIDAY = 1 shl 4
+    const val SATURDAY = 1 shl 5
+    const val SUNDAY = 1 shl 6
+    const val ALL = MONDAY or TUESDAY or WEDNESDAY or THURSDAY or FRIDAY or SATURDAY or SUNDAY
+
+    val ordered = listOf(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY)
+
+    fun forEpochDay(epochDay: Long): Int = 1 shl (LocalDate.ofEpochDay(epochDay).dayOfWeek.value - 1)
+}
+
+fun Habit.isScheduledOn(epochDay: Long): Boolean {
+    if (!isActive || epochDay < createdEpochDay) return false
+    return when (repeatType) {
+        HabitRepeatType.WEEKLY -> repeatWeekdaysMask and HabitWeekdays.forEpochDay(epochDay) != 0
+        HabitRepeatType.INTERVAL -> (epochDay - createdEpochDay) % repeatIntervalDays.coerceAtLeast(1) == 0L
+        else -> true
+    }
+}
 
 object HabitIconKey {
     const val STAR = "star"

@@ -93,5 +93,42 @@ class StreakCalculatorTest {
         assertThat(stats.longestStreak).isEqualTo(0)
         assertThat(stats.totalCompletedDays).isEqualTo(0)
     }
-}
 
+    @Test
+    fun `scheduled streak ignores days between occurrences`() {
+        val stats = StreakCalculator.calculateScheduled(
+            completedEpochDays = listOf(today - 6, today - 4, today - 2),
+            todayEpochDay = today,
+            createdEpochDay = today - 6,
+            isScheduledOn = { day -> (day - (today - 6)) % 2 == 0L },
+        )
+
+        assertThat(stats.currentStreak).isEqualTo(3)
+        assertThat(stats.longestStreak).isEqualTo(3)
+    }
+
+    @Test
+    fun `missing one scheduled occurrence breaks the streak`() {
+        val stats = StreakCalculator.calculateScheduled(
+            completedEpochDays = listOf(today - 6, today - 2, today),
+            todayEpochDay = today,
+            createdEpochDay = today - 6,
+            isScheduledOn = { day -> (day - (today - 6)) % 2 == 0L },
+        )
+
+        assertThat(stats.currentStreak).isEqualTo(2)
+        assertThat(stats.longestStreak).isEqualTo(2)
+    }
+
+    @Test
+    fun `streak remains active before todays scheduled habit is completed`() {
+        val stats = StreakCalculator.calculateScheduled(
+            completedEpochDays = listOf(today - 4, today - 2),
+            todayEpochDay = today,
+            createdEpochDay = today - 4,
+            isScheduledOn = { day -> (day - (today - 4)) % 2 == 0L },
+        )
+
+        assertThat(stats.currentStreak).isEqualTo(2)
+    }
+}

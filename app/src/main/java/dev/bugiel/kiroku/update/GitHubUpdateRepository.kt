@@ -8,6 +8,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import dev.bugiel.kiroku.R
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -55,16 +56,16 @@ class GitHubUpdateRepository(
         val json = requestText(LATEST_RELEASE_URL)
         val releaseObject = JSONObject(json)
         val version = AppVersion.parse(releaseObject.getString("tag_name"))
-            ?: error("Die Release-Version ist ungültig.")
+            ?: error(text(R.string.error_release_version_invalid))
         val current = AppVersion.parse(currentVersionName)
-            ?: error("Die installierte Version ist ungültig.")
+            ?: error(text(R.string.error_installed_version_invalid))
         if (version <= current) return@withContext UpdateCheckResult.UpToDate
 
         val assets = releaseObject.getJSONArray("assets")
         val asset = (0 until assets.length())
             .map { assets.getJSONObject(it) }
             .firstOrNull { item -> item.optString("name").endsWith(".apk", ignoreCase = true) }
-            ?: error("Das Release enthält keine APK-Datei.")
+            ?: error(text(R.string.error_release_missing_apk))
         val digest = asset.optString("digest").takeIf { it.startsWith("sha256:") }?.removePrefix("sha256:")
         UpdateCheckResult.Available(
             GitHubRelease(
@@ -81,7 +82,9 @@ class GitHubUpdateRepository(
 
     override suspend fun download(release: GitHubRelease, onProgress: (Float) -> Unit): File =
         withContext(Dispatchers.IO) {
-            require(release.sizeBytes <= 0 || release.sizeBytes <= MAX_APK_BYTES) { "Die APK-Datei ist zu groß." }
+            require(release.sizeBytes <= 0 || release.sizeBytes <= MAX_APK_BYTES) {
+                text(R.string.error_apk_too_large)
+            }
             val updateDirectory = File(applicationContext.cacheDir, "updates").apply { mkdirs() }
             val target = File(updateDirectory, "kiroku-${release.version}.apk")
             val temporary = File(updateDirectory, "kiroku-${release.version}.apk.part")
@@ -90,7 +93,9 @@ class GitHubUpdateRepository(
             val connection = openConnection(release.downloadUrl)
             try {
                 val responseLength = connection.contentLengthLong
-                require(responseLength <= 0 || responseLength <= MAX_APK_BYTES) { "Die APK-Datei ist zu groß." }
+                require(responseLength <= 0 || responseLength <= MAX_APK_BYTES) {
+                    text(R.string.error_apk_too_large)
+                }
                 val expectedLength = release.sizeBytes.takeIf { it > 0 } ?: responseLength
                 val digest = MessageDigest.getInstance("SHA-256")
                 connection.inputStream.buffered().use { input ->
@@ -101,7 +106,7 @@ class GitHubUpdateRepository(
                             val count = input.read(buffer)
                             if (count < 0) break
                             total += count
-                            require(total <= MAX_APK_BYTES) { "Die APK-Datei ist zu groß." }
+                            require(total <= MAX_APK_BYTES) { text(R.string.error_apk_too_large) }
                             digest.update(buffer, 0, count)
                             output.write(buffer, 0, count)
                             if (expectedLength > 0) onProgress((total.toFloat() / expectedLength).coerceIn(0f, 1f))
@@ -110,10 +115,10 @@ class GitHubUpdateRepository(
                 }
                 val actualDigest = digest.digest().toHexString()
                 release.sha256?.let { expected ->
-                    check(actualDigest.equals(expected, ignoreCase = true)) { "Die Prüfsumme der APK stimmt nicht." }
+                    check(actualDigest.equals(expected, ignoreCase = true)) { text(R.string.error_apk_checksum) }
                 }
                 target.delete()
-                check(temporary.renameTo(target)) { "Die APK konnte nicht gespeichert werden." }
+                check(temporary.renameTo(target)) { text(R.string.error_apk_save) }
                 verifyDownloadedPackage(target)
                 onProgress(1f)
                 target
@@ -126,7 +131,7 @@ class GitHubUpdateRepository(
         }
 
     override fun install(file: File): InstallResult {
-        check(file.isFile) { "Die APK wurde nicht gefunden." }
+        check(file.isFile) { text(R.string.error_apk_not_found) }
         if (!packageManager.canRequestPackageInstalls()) {
             applicationContext.startActivity(
                 Intent(
@@ -152,15 +157,15 @@ class GitHubUpdateRepository(
     }
 
     private fun verifyDownloadedPackage(file: File) {
-        val archive = archivePackageInfo(file) ?: error("Die heruntergeladene Datei ist keine gültige APK.")
-        check(archive.packageName == applicationContext.packageName) { "Die APK gehört zu einer anderen App." }
+        val archive = archivePackageInfo(file) ?: error(text(R.string.error_apk_invalid))
+        check(archive.packageName == applicationContext.packageName) { text(R.string.error_apk_wrong_package) }
         check(packageVersionCode(archive) > packageVersionCode(currentPackageInfo)) {
-            "Die APK ist nicht neuer als die installierte Version."
+            text(R.string.error_apk_not_newer)
         }
         val installedSigners = signerDigests(currentPackageInfo)
         val archiveSigners = signerDigests(archive)
         check(installedSigners.isNotEmpty() && installedSigners.intersect(archiveSigners).isNotEmpty()) {
-            "Die APK wurde mit einem anderen Schlüssel signiert. Die Installation wurde abgebrochen."
+            text(R.string.error_apk_wrong_signature)
         }
     }
 
@@ -214,9 +219,9 @@ class GitHubUpdateRepository(
         val connection = openConnection(url)
         return try {
             connection.inputStream.bufferedReader().use { reader ->
-                val text = reader.readText()
-                require(text.length <= MAX_RELEASE_JSON_CHARS) { "Die GitHub-Antwort ist zu groß." }
-                text
+                val response = reader.readText()
+                require(response.length <= MAX_RELEASE_JSON_CHARS) { text(R.string.error_github_response_large) }
+                response
             }
         } finally {
             connection.disconnect()
@@ -232,8 +237,11 @@ class GitHubUpdateRepository(
             setRequestProperty("User-Agent", "Kiroku-Android/$currentVersionName")
             setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
             val status = responseCode
-            if (status !in 200..299) error("GitHub antwortete mit Status $status.")
+            if (status !in 200..299) error(text(R.string.error_github_status, status))
         }
+
+    private fun text(resourceId: Int, vararg arguments: Any): String =
+        applicationContext.getString(resourceId, *arguments)
 
     companion object {
         private const val LATEST_RELEASE_URL =

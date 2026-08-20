@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -53,6 +54,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.bugiel.kiroku.R
 import dev.bugiel.kiroku.domain.model.Habit
 import dev.bugiel.kiroku.domain.model.HabitStats
+import dev.bugiel.kiroku.domain.model.HabitRepeatType
+import dev.bugiel.kiroku.domain.model.HabitWeekdays
+import dev.bugiel.kiroku.domain.model.isScheduledOn
 import dev.bugiel.kiroku.ui.util.formatLongDate
 import dev.bugiel.kiroku.ui.util.formatMonth
 import dev.bugiel.kiroku.ui.util.habitColor
@@ -142,6 +146,23 @@ private fun HabitDetailContent(
                         Text(habit.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         if (habit.description.isNotBlank()) {
                             Text(habit.description, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 4.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.CalendarMonth,
+                                contentDescription = null,
+                                modifier = Modifier.size(17.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                text = habitScheduleSummary(habit),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 4.dp),
+                            )
                         }
                         habit.dueTimeMinutes?.let { minutes ->
                             Row(
@@ -276,6 +297,7 @@ private fun CalendarCard(
                                 completed = date.toEpochDay() in completedDays,
                                 todayEpochDay = todayEpochDay,
                                 createdEpochDay = habit.createdEpochDay,
+                                scheduled = habit.isScheduledOn(date.toEpochDay()),
                                 color = color,
                                 onClick = { onToggleDate(date.toEpochDay()) },
                                 modifier = Modifier.weight(1f),
@@ -303,6 +325,7 @@ private fun CalendarDay(
     completed: Boolean,
     todayEpochDay: Long,
     createdEpochDay: Long,
+    scheduled: Boolean,
     color: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -312,13 +335,14 @@ private fun CalendarDay(
     val isToday = epochDay == todayEpochDay
     val isFuture = epochDay > todayEpochDay
     val beforeCreation = epochDay < createdEpochDay
-    val enabled = !isFuture && !beforeCreation
+    val enabled = !isFuture && !beforeCreation && (scheduled || completed)
     val formatted = formatLongDate(context, date)
     val description = stringResource(
         when {
             isFuture -> R.string.calendar_day_future
             beforeCreation -> R.string.calendar_before_creation
             completed -> R.string.calendar_day_completed
+            !scheduled -> R.string.calendar_day_not_scheduled
             else -> R.string.calendar_day_open
         },
         formatted,
@@ -342,6 +366,31 @@ private fun CalendarDay(
             fontWeight = if (isToday || completed) FontWeight.Bold else FontWeight.Normal,
         )
     }
+}
+
+@Composable
+private fun habitScheduleSummary(habit: Habit): String = when (habit.repeatType) {
+    HabitRepeatType.WEEKLY -> HabitWeekdays.ordered
+        .filter { habit.repeatWeekdaysMask and it != 0 }
+        .map { stringResource(weekdayLabel(it)) }
+        .joinToString(", ")
+        .ifBlank { stringResource(R.string.repeat_weekly) }
+    HabitRepeatType.INTERVAL -> pluralStringResource(
+        R.plurals.repeat_every_days,
+        habit.repeatIntervalDays,
+        habit.repeatIntervalDays,
+    )
+    else -> stringResource(R.string.repeat_daily)
+}
+
+private fun weekdayLabel(dayMask: Int): Int = when (dayMask) {
+    HabitWeekdays.MONDAY -> R.string.weekday_monday
+    HabitWeekdays.TUESDAY -> R.string.weekday_tuesday
+    HabitWeekdays.WEDNESDAY -> R.string.weekday_wednesday
+    HabitWeekdays.THURSDAY -> R.string.weekday_thursday
+    HabitWeekdays.FRIDAY -> R.string.weekday_friday
+    HabitWeekdays.SATURDAY -> R.string.weekday_saturday
+    else -> R.string.weekday_sunday
 }
 
 @Composable

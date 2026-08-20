@@ -37,6 +37,7 @@ fun SettingsDialog(
 ) {
     val settings by viewModel.themeSettings.collectAsStateWithLifecycle()
     val updateState by viewModel.updateState.collectAsStateWithLifecycle()
+    val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         if (updateState is UpdateUiState.Idle) viewModel.checkForUpdates()
@@ -50,6 +51,32 @@ fun SettingsDialog(
                 modifier = Modifier.heightIn(max = 580.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                Text(
+                    text = stringResource(R.string.language),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                AppLanguage.entries.forEach { language ->
+                    val label = when (language) {
+                        AppLanguage.SYSTEM -> R.string.language_system
+                        AppLanguage.ENGLISH -> R.string.language_english
+                        AppLanguage.GERMAN -> R.string.language_german
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.setAppLanguage(language) }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = appLanguage == language,
+                            onClick = { viewModel.setAppLanguage(language) },
+                        )
+                        Text(text = stringResource(label), modifier = Modifier.padding(start = 8.dp))
+                    }
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
                 Text(
                     text = stringResource(R.string.theme_settings),
                     style = MaterialTheme.typography.titleSmall,
