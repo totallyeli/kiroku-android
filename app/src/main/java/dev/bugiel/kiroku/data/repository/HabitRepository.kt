@@ -45,8 +45,6 @@ class OfflineHabitRepository(
                     isScheduledOn = habit::isScheduledOn,
                 ),
                 isScheduledToday = habit.isScheduledOn(todayEpochDay),
-                isScheduledYesterday = habit.isScheduledOn(todayEpochDay - 1),
-                isCompletedYesterday = todayEpochDay - 1 in days,
             )
         }
     }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,13 +19,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
@@ -33,11 +38,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,7 +59,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.bugiel.kiroku.R
 import dev.bugiel.kiroku.domain.model.HabitWithStatus
+import dev.bugiel.kiroku.domain.time.HabitHistoryDates
 import dev.bugiel.kiroku.ui.util.formatTodayDate
+import dev.bugiel.kiroku.ui.util.formatLongDate
 import dev.bugiel.kiroku.ui.util.habitColor
 import dev.bugiel.kiroku.ui.util.habitIcon
 import java.time.LocalDate
@@ -64,15 +76,50 @@ fun HabitsScreen(
 ) {
     val habits by viewModel.habits.collectAsStateWithLifecycle()
     val todayEpochDay by viewModel.todayEpochDay.collectAsStateWithLifecycle()
+    val historyState by viewModel.historyState.collectAsStateWithLifecycle()
     val todayHabits = habits.filter { it.isScheduledToday }
-    val missedYesterday = habits.filter { it.isScheduledYesterday && !it.isCompletedYesterday }
     val completed = todayHabits.count { it.isCompletedToday }
+    var showHistoryDatePicker by rememberSaveable { mutableStateOf(false) }
+
+    if (showHistoryDatePicker) {
+        PastDatePickerDialog(
+            todayEpochDay = todayEpochDay,
+            onDismiss = { showHistoryDatePicker = false },
+            onSelect = { epochDay ->
+                showHistoryDatePicker = false
+                viewModel.selectHistoryDate(epochDay)
+            },
+        )
+    }
+
+    historyState?.let { history ->
+        HabitHistoryDialog(
+            epochDay = history.epochDay,
+            habits = history.habits.filter { it.isScheduledToday || it.isCompletedToday },
+            onDismiss = { viewModel.selectHistoryDate(null) },
+            onChooseAnotherDate = {
+                viewModel.selectHistoryDate(null)
+                showHistoryDatePicker = true
+            },
+            onOpenHabit = { habitId ->
+                viewModel.selectHistoryDate(null)
+                onOpenHabit(habitId)
+            },
+            onToggle = viewModel::toggleHistory,
+        )
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.habits), fontWeight = FontWeight.SemiBold) },
                 actions = {
+                    IconButton(onClick = { showHistoryDatePicker = true }) {
+                        Icon(
+                            Icons.Default.CalendarMonth,
+                            contentDescription = stringResource(R.string.open_habit_history),
+                        )
+                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.open_settings))
                     }
@@ -98,16 +145,6 @@ fun HabitsScreen(
                     total = todayHabits.size,
                 )
             }
-            if (missedYesterday.isNotEmpty()) {
-                item { MissedYesterdayHeader() }
-                items(missedYesterday, key = { "yesterday-${it.habit.id}" }) { item ->
-                    MissedYesterdayCard(
-                        item = item,
-                        onClick = { onOpenHabit(item.habit.id) },
-                        onComplete = { viewModel.completeYesterday(item) },
-                    )
-                }
-            }
             if (habits.isEmpty()) {
                 item { HabitsEmptyState() }
             } else if (todayHabits.isEmpty()) {
@@ -125,45 +162,128 @@ fun HabitsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MissedYesterdayHeader() {
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) {
-        Text(
-            text = stringResource(R.string.missed_yesterday),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text(
-            text = stringResource(R.string.missed_yesterday_explanation),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+private fun PastDatePickerDialog(
+    todayEpochDay: Long,
+    onDismiss: () -> Unit,
+    onSelect: (Long) -> Unit,
+) {
+    val maximumDateMillis = HabitHistoryDates.utcMillisFromEpochDay(todayEpochDay)
+    val state = androidx.compose.material3.rememberDatePickerState(
+        initialSelectedDateMillis = HabitHistoryDates.utcMillisFromEpochDay(todayEpochDay - 1),
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean = utcTimeMillis < maximumDateMillis
+        },
+    )
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    state.selectedDateMillis?.let {
+                        onSelect(HabitHistoryDates.epochDayFromUtcMillis(it))
+                    }
+                },
+                enabled = state.selectedDateMillis != null,
+            ) {
+                Text(stringResource(R.string.choose_date))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    ) {
+        DatePicker(
+            state = state,
+            title = { Text(stringResource(R.string.choose_past_date), modifier = Modifier.padding(24.dp)) },
+            showModeToggle = false,
         )
     }
 }
 
 @Composable
-private fun MissedYesterdayCard(
+private fun HabitHistoryDialog(
+    epochDay: Long,
+    habits: List<HabitWithStatus>,
+    onDismiss: () -> Unit,
+    onChooseAnotherDate: () -> Unit,
+    onOpenHabit: (Long) -> Unit,
+    onToggle: (HabitWithStatus) -> Unit,
+) {
+    val date = LocalDate.ofEpochDay(epochDay)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.habit_history)) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = formatLongDate(context, date),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = stringResource(R.string.habit_history_explanation),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
+                )
+                if (habits.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.no_habits_on_date),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 20.dp),
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(habits, key = { it.habit.id }) { item ->
+                            HistoryHabitCard(
+                                item = item,
+                                onOpen = { onOpenHabit(item.habit.id) },
+                                onToggle = { onToggle(item) },
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onChooseAnotherDate) { Text(stringResource(R.string.choose_another_date)) }
+        },
+    )
+}
+
+@Composable
+private fun HistoryHabitCard(
     item: HabitWithStatus,
-    onClick: () -> Unit,
-    onComplete: () -> Unit,
+    onOpen: () -> Unit,
+    onToggle: () -> Unit,
 ) {
     val color = habitColor(item.habit.colorKey)
     Card(
-        onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        onClick = onOpen,
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                modifier = Modifier.size(44.dp).background(color.copy(alpha = 0.16f), CircleShape),
+                modifier = Modifier.size(42.dp).background(color.copy(alpha = 0.16f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(habitIcon(item.habit.iconKey), contentDescription = null, tint = color)
             }
-            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
                 Text(
                     text = item.habit.name,
                     style = MaterialTheme.typography.titleSmall,
@@ -172,20 +292,27 @@ private fun MissedYesterdayCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = stringResource(R.string.complete_for_yesterday),
+                    text = stringResource(
+                        if (item.isCompletedToday) R.string.history_completed else R.string.history_not_completed,
+                    ),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             FilledIconButton(
-                onClick = onComplete,
-                modifier = Modifier.size(48.dp),
+                onClick = onToggle,
+                modifier = Modifier.size(46.dp),
                 colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
-                    containerColor = color,
-                    contentColor = Color.White,
+                    containerColor = if (item.isCompletedToday) color else MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = if (item.isCompletedToday) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                 ),
             ) {
-                Icon(Icons.Default.Check, contentDescription = stringResource(R.string.complete_for_yesterday))
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = stringResource(
+                        if (item.isCompletedToday) R.string.unmark_past_habit else R.string.mark_past_habit,
+                    ),
+                )
             }
         }
     }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.1 — 2026-08-23
+
+- Removed previous-day habit cards from today's habit list
+- Added a dedicated habit-history calendar for choosing a past date
+- Added past-date controls for marking or unmarking each scheduled habit without affecting today's view
+
 ## 1.2.0 — 2026-08-20
 
 - Added full English and German interfaces with an in-app language selector and system-language support

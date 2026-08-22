@@ -21,8 +21,6 @@ data class HabitWithStatus(
     val isCompletedToday: Boolean,
     val stats: HabitStats,
     val isScheduledToday: Boolean = true,
-    val isScheduledYesterday: Boolean = true,
-    val isCompletedYesterday: Boolean = false,
 )
 
 data class HabitStats(

@@ -11,7 +11,7 @@ Kiroku is a private Android app for notes and habits. It has no accounts, ads, a
 - Track habits daily, on selected weekdays, or at a configurable day interval
 - Manage habits with a name, description, color, creation date, and 28 available icons
 - Set an optional schedule and reminder time under **More options**
-- Complete a missed habit for yesterday after midnight without changing its recorded date
+- Review and correct past completions from a dedicated habit-history calendar
 - Review schedule-aware current streak, longest streak, and total completed days
 - Navigate a monthly calendar and correct past or current entries
 - Choose a light, dark, or system theme, with dynamic colors on Android 12 and later
@@ -39,7 +39,7 @@ Completions use a composite primary key made from the habit ID and local `epochD
 
 A streak advances across the habit's scheduled occurrences. Non-scheduled days do not break it. While the current occurrence is still incomplete, the streak from the previous occurrence remains active. Calendar edits recalculate every statistic immediately.
 
-After midnight, a **Missed yesterday** section lets the user record an unfinished habit against yesterday's calendar date. This is an explicit one-day correction: it does not move the completion into today or alter unrelated completion history.
+The main habit list only shows habits scheduled for the current day. A separate history calendar lets the user choose an earlier date and mark or unmark the habits scheduled for that date without mixing them into today's view.
 
 An optional reminder time does not change status or streak calculations. Notifications are only scheduled for an occurrence in the selected weekly or interval schedule. Before showing one, Kiroku checks whether the habit is already complete for the current local day. Reminders are rescheduled after device restarts, time-zone changes, and app updates. Android 13 and later require notification permission.
 
