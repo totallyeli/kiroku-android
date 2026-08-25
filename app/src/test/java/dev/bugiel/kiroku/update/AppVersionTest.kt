@@ -13,6 +13,8 @@ class AppVersionTest {
     fun `compares semantic version components numerically`() {
         assertThat(AppVersion(1, 10, 0)).isGreaterThan(AppVersion(1, 2, 9))
         assertThat(AppVersion(2, 0, 0)).isGreaterThan(AppVersion(1, 99, 99))
+        assertThat(requireNotNull(AppVersion.parse("v1.3.0")))
+            .isGreaterThan(requireNotNull(AppVersion.parse("v1.2.1")))
     }
 
     @Test

@@ -10,9 +10,12 @@ import dev.bugiel.kiroku.data.repository.OfflineAttachmentRepository
 import dev.bugiel.kiroku.data.repository.OfflineHabitRepository
 import dev.bugiel.kiroku.data.repository.OfflineNoteRepository
 import dev.bugiel.kiroku.data.repository.SettingsRepository
+import dev.bugiel.kiroku.data.repository.TodoRepository
+import dev.bugiel.kiroku.data.repository.OfflineTodoRepository
 import dev.bugiel.kiroku.domain.time.SystemDateClock
 import dev.bugiel.kiroku.domain.time.TodayProvider
 import dev.bugiel.kiroku.reminder.AndroidHabitReminderScheduler
+import dev.bugiel.kiroku.reminder.AndroidTodoReminderScheduler
 import dev.bugiel.kiroku.update.AppUpdateRepository
 import dev.bugiel.kiroku.update.GitHubUpdateRepository
 
@@ -34,7 +37,9 @@ class AppContainer(context: Context) {
         OfflineAttachmentRepository(context.applicationContext, database.noteAttachmentDao())
     }
     val habitRepository: HabitRepository by lazy { OfflineHabitRepository(database.habitDao()) }
+    val todoRepository: TodoRepository by lazy { OfflineTodoRepository(database.todoDao()) }
     val settingsRepository = SettingsRepository(context.applicationContext)
     val habitReminderScheduler = AndroidHabitReminderScheduler(context.applicationContext)
+    val todoReminderScheduler = AndroidTodoReminderScheduler(context.applicationContext)
     val appUpdateRepository: AppUpdateRepository = GitHubUpdateRepository(context.applicationContext)
 }

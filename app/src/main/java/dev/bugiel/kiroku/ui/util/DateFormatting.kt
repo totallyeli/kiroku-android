@@ -4,6 +4,7 @@ import android.content.Context
 import dev.bugiel.kiroku.R
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -39,5 +40,12 @@ fun formatMonth(context: Context, month: java.time.YearMonth): String {
     return month.format(
         DateTimeFormatter.ofPattern(context.getString(R.string.month_pattern), locale),
     ).replaceFirstChar { it.titlecase(locale) }
+}
+
+fun formatTime(context: Context, minutes: Int): String {
+    val locale = context.appLocale()
+    return LocalTime.of(minutes / 60, minutes % 60).format(
+        DateTimeFormatter.ofPattern(context.getString(R.string.time_pattern), locale),
+    )
 }
 

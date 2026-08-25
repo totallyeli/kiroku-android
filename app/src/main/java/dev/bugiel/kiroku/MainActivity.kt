@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -56,33 +57,47 @@ import dev.bugiel.kiroku.ui.notes.NotesViewModel
 import dev.bugiel.kiroku.ui.settings.SettingsDialog
 import dev.bugiel.kiroku.ui.settings.SettingsViewModel
 import dev.bugiel.kiroku.ui.theme.KirokuTheme
+import dev.bugiel.kiroku.ui.todos.TodoEditorScreen
+import dev.bugiel.kiroku.ui.todos.TodoEditorViewModel
+import dev.bugiel.kiroku.ui.todos.TodosScreen
+import dev.bugiel.kiroku.ui.todos.TodosViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : AppCompatActivity() {
     private val reminderHabitId = MutableStateFlow<Long?>(null)
+    private val reminderTodoId = MutableStateFlow<Long?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        reminderHabitId.value = intent.getLongExtra(EXTRA_REMINDER_HABIT_ID, 0L).takeIf { it != 0L }
+        readReminderIntent(intent)
         enableEdgeToEdge()
         setContent {
             val openHabitId by reminderHabitId.collectAsStateWithLifecycle()
+            val openTodoId by reminderTodoId.collectAsStateWithLifecycle()
             KirokuRoot(
                 container = (application as KirokuApplication).container,
                 openHabitId = openHabitId,
+                openTodoId = openTodoId,
                 onHabitOpened = { reminderHabitId.value = null },
+                onTodoOpened = { reminderTodoId.value = null },
             )
         }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        readReminderIntent(intent)
+    }
+
+    private fun readReminderIntent(intent: Intent) {
         reminderHabitId.value = intent.getLongExtra(EXTRA_REMINDER_HABIT_ID, 0L).takeIf { it != 0L }
+        reminderTodoId.value = intent.getLongExtra(EXTRA_REMINDER_TODO_ID, 0L).takeIf { it != 0L }
     }
 
     companion object {
         const val EXTRA_REMINDER_HABIT_ID = "dev.bugiel.kiroku.extra.OPEN_REMINDER_HABIT_ID"
+        const val EXTRA_REMINDER_TODO_ID = "dev.bugiel.kiroku.extra.OPEN_REMINDER_TODO_ID"
     }
 }
 
@@ -90,7 +105,9 @@ class MainActivity : AppCompatActivity() {
 private fun KirokuRoot(
     container: AppContainer,
     openHabitId: Long?,
+    openTodoId: Long?,
     onHabitOpened: () -> Unit,
+    onTodoOpened: () -> Unit,
 ) {
     val settings by container.settingsRepository.themeSettings.collectAsStateWithLifecycle(ThemeSettings())
     val systemDark = isSystemInDarkTheme()
@@ -138,7 +155,9 @@ private fun KirokuRoot(
         KirokuNavigation(
             container = container,
             openHabitId = openHabitId,
+            openTodoId = openTodoId,
             onHabitOpened = onHabitOpened,
+            onTodoOpened = onTodoOpened,
             onOpenSettings = { showSettingsDialog = true },
         )
         if (showSettingsDialog) {
@@ -154,18 +173,26 @@ private fun KirokuRoot(
 private fun KirokuNavigation(
     container: AppContainer,
     openHabitId: Long?,
+    openTodoId: Long?,
     onHabitOpened: () -> Unit,
+    onTodoOpened: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val rootRoutes = setOf("notes", "habits")
+    val rootRoutes = setOf("notes", "habits", "todos")
 
     LaunchedEffect(openHabitId) {
         openHabitId?.let { habitId ->
             navController.navigate("habit/$habitId") { launchSingleTop = true }
             onHabitOpened()
+        }
+    }
+    LaunchedEffect(openTodoId) {
+        openTodoId?.let { todoId ->
+            navController.navigate("todo-edit/$todoId") { launchSingleTop = true }
+            onTodoOpened()
         }
     }
 
@@ -177,6 +204,7 @@ private fun KirokuNavigation(
                     listOf(
                         Triple("notes", R.string.notes, Icons.AutoMirrored.Filled.Notes),
                         Triple("habits", R.string.habits, Icons.Default.CheckCircle),
+                        Triple("todos", R.string.todos, Icons.Default.Checklist),
                     ).forEach { (route, label, icon) ->
                         NavigationBarItem(
                             selected = currentRoute == route,
@@ -251,6 +279,25 @@ private fun KirokuNavigation(
                     onOpenSettings = onOpenSettings,
                 )
             }
+            composable("todos") {
+                val todosViewModel: TodosViewModel = viewModel(
+                    factory = viewModelFactory {
+                        initializer {
+                            TodosViewModel(
+                                container.todoRepository,
+                                container.dateClock,
+                                container.todoReminderScheduler,
+                            )
+                        }
+                    },
+                )
+                TodosScreen(
+                    viewModel = todosViewModel,
+                    onCreateTodo = { navController.navigate("todo-edit/0") },
+                    onOpenTodo = { navController.navigate("todo-edit/$it") },
+                    onOpenSettings = onOpenSettings,
+                )
+            }
             composable("habit/{habitId}") { entry ->
                 val habitId = entry.arguments?.getString("habitId")?.toLongOrNull() ?: return@composable
                 val detailViewModel: HabitDetailViewModel = viewModel(
@@ -293,6 +340,33 @@ private fun KirokuNavigation(
                     onDeleted = {
                         navController.navigate("habits") {
                             popUpTo("habits") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateBack = navController::popBackStack,
+                )
+            }
+            composable("todo-edit/{todoId}") { entry ->
+                val todoId = entry.arguments?.getString("todoId")?.toLongOrNull() ?: 0L
+                val editorViewModel: TodoEditorViewModel = viewModel(
+                    key = "todo-editor-$todoId",
+                    factory = viewModelFactory {
+                        initializer {
+                            TodoEditorViewModel(
+                                todoId = todoId,
+                                repository = container.todoRepository,
+                                dateClock = container.dateClock,
+                                reminderScheduler = container.todoReminderScheduler,
+                            )
+                        }
+                    },
+                )
+                TodoEditorScreen(
+                    viewModel = editorViewModel,
+                    onSaved = { navController.popBackStack() },
+                    onDeleted = {
+                        navController.navigate("todos") {
+                            popUpTo("todos") { inclusive = true }
                             launchSingleTop = true
                         }
                     },

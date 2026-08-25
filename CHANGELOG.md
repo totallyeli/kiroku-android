@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0 — 2026-08-26
+
+- Added a dedicated To-dos tab with search and Open, Completed, and All filters
+- Added smart Overdue, Today, Tomorrow, Upcoming, and collapsible Completed sections
+- Added to-do deadlines, priorities, colors, icons, optional reminders, editing, deletion, completion, reopening, and undo
+- Added notification actions to complete a to-do or snooze it for 10 minutes
+- Added full English and German localization for the new feature
+- Added the additive version 5 database migration without changing existing notes, attachments, habits, or completion history
+
 ## 1.2.1 — 2026-08-23
 
 - Removed previous-day habit cards from today's habit list

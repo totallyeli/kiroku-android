@@ -54,7 +54,7 @@ class AndroidHabitReminderScheduler(
         }
         return PendingIntent.getBroadcast(
             context,
-            habitId.hashCode(),
+            ReminderIds.habitAlarm(habitId),
             intent,
             behaviorFlag or PendingIntent.FLAG_IMMUTABLE,
         )

@@ -29,6 +29,9 @@
             android:name=".reminder.HabitReminderReceiver"
             android:exported="false" />
         <receiver
+            android:name=".reminder.TodoReminderReceiver"
+            android:exported="false" />
+        <receiver
             android:name=".reminder.HabitReminderRescheduleReceiver"
             android:exported="false">
             <intent-filter>

@@ -3,6 +3,7 @@ package dev.bugiel.kiroku
 import android.app.Application
 import dev.bugiel.kiroku.di.AppContainer
 import dev.bugiel.kiroku.reminder.HabitReminderNotifications
+import dev.bugiel.kiroku.reminder.TodoReminderNotifications
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -15,14 +16,18 @@ class KirokuApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         HabitReminderNotifications.createChannel(this)
-        rescheduleHabitReminders()
+        TodoReminderNotifications.createChannel(this)
+        rescheduleReminders()
     }
 
-    fun rescheduleHabitReminders(onComplete: () -> Unit = {}) {
+    fun rescheduleReminders(onComplete: () -> Unit = {}) {
         applicationScope.launch {
             try {
                 container.habitRepository.getActiveWithReminders().forEach {
                     container.habitReminderScheduler.schedule(it)
+                }
+                container.todoRepository.getIncompleteWithReminders().forEach {
+                    container.todoReminderScheduler.schedule(it)
                 }
             } finally {
                 onComplete()

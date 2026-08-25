@@ -11,6 +11,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import dev.bugiel.kiroku.MainActivity
 import dev.bugiel.kiroku.R
 import dev.bugiel.kiroku.domain.model.Habit
@@ -40,9 +41,10 @@ object HabitReminderNotifications {
 
         val openAppIntent = PendingIntent.getActivity(
             context,
-            habit.id.hashCode(),
+            ReminderIds.habitOpen(habit.id),
             Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                data = "kiroku://habit/${habit.id}".toUri()
                 putExtra(MainActivity.EXTRA_REMINDER_HABIT_ID, habit.id)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
@@ -57,10 +59,16 @@ object HabitReminderNotifications {
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .build()
 
-        NotificationManagerCompat.from(context).notify(habit.id.hashCode(), notification)
+        NotificationManagerCompat.from(context).apply {
+            cancel(habit.id.hashCode())
+            notify(ReminderIds.habitNotification(habit.id), notification)
+        }
     }
 
     fun cancel(context: Context, habitId: Long) {
-        NotificationManagerCompat.from(context).cancel(habitId.hashCode())
+        NotificationManagerCompat.from(context).apply {
+            cancel(habitId.hashCode())
+            cancel(ReminderIds.habitNotification(habitId))
+        }
     }
 }

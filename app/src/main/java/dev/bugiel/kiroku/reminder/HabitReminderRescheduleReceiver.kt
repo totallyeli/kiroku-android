@@ -11,7 +11,7 @@ class HabitReminderRescheduleReceiver : BroadcastReceiver() {
 
         val pendingResult = goAsync()
         val application = context.applicationContext as KirokuApplication
-        application.rescheduleHabitReminders { pendingResult.finish() }
+        application.rescheduleReminders { pendingResult.finish() }
     }
 
     companion object {

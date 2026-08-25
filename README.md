@@ -1,6 +1,6 @@
 # Kiroku
 
-Kiroku is a private Android app for notes and habits. It has no accounts, ads, analytics, or content synchronization. Notes, attachments, and habits remain on the device, and Android cloud backups are disabled. An internet connection is used only when the user opens Settings and checks GitHub for an update.
+Kiroku is a local-first Android app for notes, habits, and to-dos. It has no accounts, ads, analytics, or content synchronization. Notes, attachments, habits, and to-dos remain on the device, and Android cloud backups are disabled. An internet connection is used only when the user opens Settings and checks GitHub for an update.
 
 ## Features
 
@@ -14,6 +14,9 @@ Kiroku is a private Android app for notes and habits. It has no accounts, ads, a
 - Review and correct past completions from a dedicated habit-history calendar
 - Review schedule-aware current streak, longest streak, and total completed days
 - Navigate a monthly calendar and correct past or current entries
+- Create to-dos with deadlines, priorities, colors, icons, and optional local reminders
+- Find work quickly with search, status filters, and smart Overdue, Today, Tomorrow, Upcoming, and Completed sections
+- Complete, undo, reopen, edit, or safely delete to-dos, including notification actions to complete or snooze for 10 minutes
 - Choose a light, dark, or system theme, with dynamic colors on Android 12 and later
 - Use Kiroku in English or German, or follow the Android system language
 - Check the latest GitHub Release from Settings, download its verified APK, and open Android's installer
@@ -27,8 +30,8 @@ The project uses Kotlin 2.4.10, Jetpack Compose and Material 3 (BOM 2026.06.01),
 app/src/main/java/dev/bugiel/kiroku/
 ├── data/       Room, DAOs, document access, and local repositories
 ├── di/         Small manual AppContainer
-├── domain/     Models, search, streaks, and date logic
-├── reminder/   Local habit reminder scheduling and delivery
+├── domain/     Models, search, organization, streaks, and date logic
+├── reminder/   Local habit and to-do reminder scheduling and delivery
 ├── update/     GitHub Release checks and verified APK downloads
 └── ui/         Compose screens, Markdown, ViewModels, theme, and UI helpers
 ```
@@ -41,13 +44,17 @@ A streak advances across the habit's scheduled occurrences. Non-scheduled days d
 
 The main habit list only shows habits scheduled for the current day. A separate history calendar lets the user choose an earlier date and mark or unmark the habits scheduled for that date without mixing them into today's view.
 
-An optional reminder time does not change status or streak calculations. Notifications are only scheduled for an occurrence in the selected weekly or interval schedule. Before showing one, Kiroku checks whether the habit is already complete for the current local day. Reminders are rescheduled after device restarts, time-zone changes, and app updates. Android 13 and later require notification permission.
+An optional reminder time does not change status or streak calculations. Notifications are only scheduled for an occurrence in the selected weekly or interval schedule. Before showing one, Kiroku checks whether the habit is already complete for the current local day.
+
+To-do reminders are one-time alarms derived from the selected deadline and offset. They are canceled when the to-do is completed or deleted and updated when its deadline changes. A notification can complete the to-do without opening Kiroku or snooze it for 10 minutes. Habit and to-do reminder identifiers use separate namespaces, so their alarms and notifications do not replace each other.
+
+Reminders are rescheduled after device restarts, time or time-zone changes, and app updates. Kiroku uses inexact alarms that do not require exact-alarm permission. Android 13 and later require notification permission.
 
 ## Updates and data safety
 
 **Check for updates** reads the latest release from `totallyeli/kiroku-android`. Before installation, Kiroku verifies the package name, higher version code, signing certificate, and the APK's SHA-256 digest when GitHub provides one. The user confirms the actual installation in Android's system dialog.
 
-An app update uses the same package name and signing key. The version 2-to-3 migration adds the attachment table. The version 3-to-4 migration adds schedule fields with daily defaults, so existing habits keep their previous behavior. Neither migration replaces or deletes notes, attachments, habits, completions, or streaks. Uninstalling the app still removes its local app data.
+An app update uses the same package name and signing key. The version 2-to-3 migration adds the attachment table. The version 3-to-4 migration adds schedule fields with daily defaults, so existing habits keep their previous behavior. The version 4-to-5 migration only adds the to-do table and its indexes. These migrations do not replace or delete notes, attachments, habits, completions, streaks, or existing files. Uninstalling the app still removes its local app data.
 
 ## Installation
 
@@ -61,6 +68,7 @@ Requirements: JDK 17 or later, Android SDK Platform 37.0, and Build Tools 36.0.0
 ./gradlew test
 ./gradlew lint
 ./gradlew assembleDebug
+./gradlew assembleRelease
 ```
 
 On Windows, run the same tasks with `gradlew.bat`. The generated APK is located at:
