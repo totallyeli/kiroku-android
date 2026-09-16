@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0 — 2026-09-17
+
+- Added a Workouts tab for custom routines, exercises, and dated workout days
+- Added multiple sets per exercise with kilogram weights and repetition counts
+- Added peak weights on exercise cards and editable exercise history
+- Added exercise archiving and restoration while preserving historical sessions
+- Added validation, unsaved-edit protection, and confirmation before deleting plans or workout days
+- Added English and German translations and the additive version 6 database migration
+
 ## 1.3.0 — 2026-08-26
 
 - Added a dedicated To-dos tab with search and Open, Completed, and All filters

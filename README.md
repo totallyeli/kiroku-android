@@ -1,6 +1,6 @@
 # Kiroku
 
-Kiroku is a local-first Android app for notes, habits, and to-dos. It has no accounts, ads, analytics, or content synchronization. Notes, attachments, habits, and to-dos remain on the device, and Android cloud backups are disabled. An internet connection is used only when the user opens Settings and checks GitHub for an update.
+Kiroku is a local-first Android app for notes, habits, to-dos, and workouts. It has no accounts, ads, analytics, or content synchronization. All records and attachments remain on the device, and Android cloud backups are disabled. An internet connection is used only when the user opens Settings and checks GitHub for an update.
 
 ## Features
 
@@ -17,6 +17,9 @@ Kiroku is a local-first Android app for notes, habits, and to-dos. It has no acc
 - Create to-dos with deadlines, priorities, colors, icons, and optional local reminders
 - Find work quickly with search, status filters, and smart Overdue, Today, Tomorrow, Upcoming, and Completed sections
 - Complete, undo, reopen, edit, or safely delete to-dos, including notification actions to complete or snooze for 10 minutes
+- Create workout plans such as Push, Pull, Legs, or Cardio and choose exercises for each routine
+- Record multiple sets with weight in kilograms and repetitions in dated workout sessions
+- See each exercise’s peak weight before opening it and review or correct its history
 - Choose a light, dark, or system theme, with dynamic colors on Android 12 and later
 - Use Kiroku in English or German, or follow the Android system language
 - Check the latest GitHub Release from Settings, download its verified APK, and open Android's installer
@@ -54,7 +57,17 @@ Reminders are rescheduled after device restarts, time or time-zone changes, and 
 
 **Check for updates** reads the latest release from `totallyeli/kiroku-android`. Before installation, Kiroku verifies the package name, higher version code, signing certificate, and the APK's SHA-256 digest when GitHub provides one. The user confirms the actual installation in Android's system dialog.
 
-An app update uses the same package name and signing key. The version 2-to-3 migration adds the attachment table. The version 3-to-4 migration adds schedule fields with daily defaults, so existing habits keep their previous behavior. The version 4-to-5 migration only adds the to-do table and its indexes. These migrations do not replace or delete notes, attachments, habits, completions, streaks, or existing files. Uninstalling the app still removes its local app data.
+An app update uses the same package name and signing key. The version 2-to-3 migration adds the attachment table. The version 3-to-4 migration adds schedule fields with daily defaults, so existing habits keep their previous behavior. The version 4-to-5 migration only adds the to-do table and its indexes. The version 5-to-6 migration adds five workout tables and their indexes. These migrations do not replace or delete notes, attachments, habits, completions, streaks, to-dos, settings, or existing files. Uninstalling the app still removes its local app data.
+
+## Workout tracking
+
+The **Workouts** tab contains your plans. Create a plan, add exercises, and choose **Start / open today’s workout**. Each plan has one workout day per local date; opening it again resumes the existing day. Select an exercise, enter a weight and rep count for each set, and tap **Save**. Kilograms accept a decimal point or comma, and 0 kg supports bodyweight exercises.
+
+Exercise cards show the highest recorded weight for that exercise in that plan. The history screen lists previous dates and sets. Editing or deleting a recorded set recalculates the peak from the remaining history. No unsaved values contribute to personal bests.
+
+Workout days retain snapshots of their exercise names and order. Adding, renaming, or archiving exercises affects future days without rewriting earlier sessions. Archived exercises retain their history and can be restored. Deleting a day or entire plan requires confirmation.
+
+The feature follows the existing Room → repository → ViewModel → Compose structure. Session creation and set replacement run in transactions, and foreign keys keep deletions within the selected workout records. English and German interfaces use the existing themes and date formatting.
 
 ## Installation
 
@@ -69,6 +82,12 @@ Requirements: JDK 17 or later, Android SDK Platform 37.0, and Build Tools 36.0.0
 ./gradlew lint
 ./gradlew assembleDebug
 ./gradlew assembleRelease
+```
+
+After compilation, the optional Python standard-library check exercises the generated version 5-to-6 migration against a populated, in-memory SQLite database. It also verifies constraints, transaction rollback, and deletion boundaries:
+
+```bash
+python scripts/verify_workout_storage.py
 ```
 
 On Windows, run the same tasks with `gradlew.bat`. The generated APK is located at:

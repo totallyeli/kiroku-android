@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -61,6 +62,8 @@ import dev.bugiel.kiroku.ui.todos.TodoEditorScreen
 import dev.bugiel.kiroku.ui.todos.TodoEditorViewModel
 import dev.bugiel.kiroku.ui.todos.TodosScreen
 import dev.bugiel.kiroku.ui.todos.TodosViewModel
+import dev.bugiel.kiroku.ui.workouts.WorkoutsViewModel
+import dev.bugiel.kiroku.ui.workouts.workoutDestinations
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -181,7 +184,12 @@ private fun KirokuNavigation(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val rootRoutes = setOf("notes", "habits", "todos")
+    val rootRoutes = setOf("notes", "habits", "todos", "workouts")
+    val workoutsViewModel: WorkoutsViewModel = viewModel(
+        factory = viewModelFactory {
+            initializer { WorkoutsViewModel(container.workoutRepository, container.dateClock) }
+        },
+    )
 
     LaunchedEffect(openHabitId) {
         openHabitId?.let { habitId ->
@@ -205,6 +213,7 @@ private fun KirokuNavigation(
                         Triple("notes", R.string.notes, Icons.AutoMirrored.Filled.Notes),
                         Triple("habits", R.string.habits, Icons.Default.CheckCircle),
                         Triple("todos", R.string.todos, Icons.Default.Checklist),
+                        Triple("workouts", R.string.workouts, Icons.Default.FitnessCenter),
                     ).forEach { (route, label, icon) ->
                         NavigationBarItem(
                             selected = currentRoute == route,
@@ -230,6 +239,7 @@ private fun KirokuNavigation(
             startDestination = "notes",
             modifier = Modifier.padding(bottom = outerPadding.calculateBottomPadding()),
         ) {
+            workoutDestinations(container, workoutsViewModel, navController, onOpenSettings)
             composable("notes") {
                 val notesViewModel: NotesViewModel = viewModel(
                     factory = viewModelFactory {

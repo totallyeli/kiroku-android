@@ -1,5 +1,6 @@
 # Gradle
 .gradle/
+.kotlin/
 **/build/
 build/
 
@@ -42,4 +43,3 @@ Thumbs.db
 # Emulator data
 *.avd/
 *.ini.lock
-

@@ -12,6 +12,8 @@ import dev.bugiel.kiroku.data.repository.OfflineNoteRepository
 import dev.bugiel.kiroku.data.repository.SettingsRepository
 import dev.bugiel.kiroku.data.repository.TodoRepository
 import dev.bugiel.kiroku.data.repository.OfflineTodoRepository
+import dev.bugiel.kiroku.data.repository.WorkoutRepository
+import dev.bugiel.kiroku.data.repository.OfflineWorkoutRepository
 import dev.bugiel.kiroku.domain.time.SystemDateClock
 import dev.bugiel.kiroku.domain.time.TodayProvider
 import dev.bugiel.kiroku.reminder.AndroidHabitReminderScheduler
@@ -38,6 +40,7 @@ class AppContainer(context: Context) {
     }
     val habitRepository: HabitRepository by lazy { OfflineHabitRepository(database.habitDao()) }
     val todoRepository: TodoRepository by lazy { OfflineTodoRepository(database.todoDao()) }
+    val workoutRepository: WorkoutRepository by lazy { OfflineWorkoutRepository(database.workoutDao()) }
     val settingsRepository = SettingsRepository(context.applicationContext)
     val habitReminderScheduler = AndroidHabitReminderScheduler(context.applicationContext)
     val todoReminderScheduler = AndroidTodoReminderScheduler(context.applicationContext)
