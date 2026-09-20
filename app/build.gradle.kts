@@ -1,10 +1,18 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room3)
+}
+
+// Release signing is local-only: keystore.properties (gitignored) must point at the
+// upload keystore. Existing installs verify the certificate, so the key must never change.
+val keystoreProperties: Properties? = run {
+    val file = rootProject.file("keystore.properties")
+    if (file.isFile) Properties().apply { file.inputStream().use { load(it) } } else null
 }
 
 android {
@@ -19,9 +27,20 @@ android {
         applicationId = "dev.bugiel.kiroku"
         minSdk = 26
         targetSdk = 37
-        versionCode = 6
-        versionName = "1.4.0"
+        versionCode = 7
+        versionName = "1.4.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (keystoreProperties != null) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
     }
 
     compileOptions {
@@ -36,6 +55,14 @@ android {
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
+
+    buildTypes {
+        if (keystoreProperties != null) {
+            getByName("release") {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
 
     lint {
