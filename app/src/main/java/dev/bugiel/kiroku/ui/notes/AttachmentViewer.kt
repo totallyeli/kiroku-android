@@ -91,22 +91,35 @@ fun AttachmentViewer(
 
 @Composable
 private fun ImageViewer(file: File, modifier: Modifier = Modifier) {
-    val bitmap by produceState<Bitmap?>(initialValue = null, file) {
-        value = withContext(Dispatchers.IO) { decodeScaledBitmap(file, 1800) }
+    // Sealed state like PdfViewer: a null decode result would otherwise spin forever.
+    val imageState by produceState<ImagePageState>(ImagePageState.Loading, file) {
+        value = withContext(Dispatchers.IO) {
+            decodeScaledBitmap(file, 1800)
+                ?.let(ImagePageState::Loaded)
+                ?: ImagePageState.Failed
+        }
     }
     Box(
         modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainer),
         contentAlignment = Alignment.Center,
     ) {
-        bitmap?.let {
-            Image(
-                bitmap = it.asImageBitmap(),
+        when (val state = imageState) {
+            ImagePageState.Loading -> CircularProgressIndicator()
+            ImagePageState.Failed -> ViewerError()
+            is ImagePageState.Loaded -> Image(
+                bitmap = state.bitmap.asImageBitmap(),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize().padding(12.dp),
                 contentScale = ContentScale.Fit,
             )
-        } ?: CircularProgressIndicator()
+        }
     }
+}
+
+private sealed interface ImagePageState {
+    data object Loading : ImagePageState
+    data class Loaded(val bitmap: Bitmap) : ImagePageState
+    data object Failed : ImagePageState
 }
 
 private sealed interface PdfPageState {

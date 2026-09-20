@@ -47,8 +47,12 @@ private fun wrap(value: TextFieldValue, prefix: String, suffix: String, placehol
 
 private fun prefixCurrentLine(value: TextFieldValue, prefix: String): TextFieldValue {
     val cursor = value.selection.min
-    val lineStart = value.text.lastIndexOf('\n', startIndex = (cursor - 1).coerceAtLeast(0))
-        .let { if (it < 0) 0 else it + 1 }
+    val lineStart = if (cursor <= 0) {
+        0
+    } else {
+        // cursor > 0 so the search starts after position 0 and can never match a newline at index 0.
+        value.text.lastIndexOf('\n', startIndex = cursor - 1).let { if (it < 0) 0 else it + 1 }
+    }
     val updated = value.text.substring(0, lineStart) + prefix + value.text.substring(lineStart)
     return value.copy(
         text = updated,

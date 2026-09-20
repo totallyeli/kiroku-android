@@ -229,8 +229,15 @@ private fun NoteEditorContent(
     val focusRequester = remember { FocusRequester() }
     val creationDate = Instant.ofEpochMilli(state.createdAt).atZone(ZoneId.systemDefault()).toLocalDate()
     var editorMode by rememberSaveable { mutableStateOf(NoteEditorMode.EDIT) }
-    var editorValue by remember(state.id) {
-        mutableStateOf(TextFieldValue(state.content, selection = TextRange(state.content.length)))
+    // Initialize the editor exactly once; re-keying on state.id re-created the field with
+    // TextRange(end) when a new note got its id at the first autosave, resetting the caret.
+    var editorValue by remember { mutableStateOf(TextFieldValue("")) }
+    var editorInitialized by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.isLoading) {
+        if (!state.isLoading && !editorInitialized) {
+            editorValue = TextFieldValue(state.content, selection = TextRange(state.content.length))
+            editorInitialized = true
+        }
     }
 
     LaunchedEffect(state.content) {

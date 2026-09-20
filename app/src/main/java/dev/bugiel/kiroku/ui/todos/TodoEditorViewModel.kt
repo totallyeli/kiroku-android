@@ -35,6 +35,7 @@ data class TodoEditorState(
     val showDueTimeError: Boolean = false,
     val showPastDeadlineError: Boolean = false,
     val hasSaveError: Boolean = false,
+    val isSaving: Boolean = false,
 )
 
 class TodoEditorViewModel(
@@ -92,6 +93,7 @@ class TodoEditorViewModel(
 
     fun save(onSaved: (Long) -> Unit) {
         val snapshot = mutableState.value
+        if (snapshot.isSaving) return
         val missingTitle = snapshot.title.isBlank()
         val missingDate = snapshot.dueEpochDay == null
         val missingTime = snapshot.dueTimeMinutes == null
@@ -111,6 +113,7 @@ class TodoEditorViewModel(
             return
         }
 
+        mutableState.value = snapshot.copy(isSaving = true)
         viewModelScope.launch {
             val now = dateClock.nowMillis()
             val todo = Todo(
@@ -134,6 +137,7 @@ class TodoEditorViewModel(
                     onSaved(id)
                 }
                 .onFailure { mutableState.value = mutableState.value.copy(hasSaveError = true) }
+            mutableState.value = mutableState.value.copy(isSaving = false)
         }
     }
 

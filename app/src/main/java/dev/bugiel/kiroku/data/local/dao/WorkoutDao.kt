@@ -2,6 +2,7 @@ package dev.bugiel.kiroku.data.local.dao
 
 import androidx.room3.Dao
 import androidx.room3.Insert
+import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
 import androidx.room3.Transaction
 import dev.bugiel.kiroku.data.local.entity.WorkoutEntryWithSets
@@ -43,7 +44,7 @@ abstract class WorkoutDao {
     @Query("SELECT id FROM workout_sessions WHERE planId = :planId AND epochDay = :epochDay")
     abstract suspend fun sessionForDay(planId: Long, epochDay: Long): Long?
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     abstract suspend fun insertSession(session: WorkoutSessionEntity): Long
 
     @Insert
@@ -54,14 +55,18 @@ abstract class WorkoutDao {
         // A repeated tap resumes the existing day, preserving every saved set.
         sessionForDay(planId, epochDay)?.let { return it }
         val active = exercises(planId).filterNot { it.isArchived }
-        require(active.isNotEmpty())
+        require(active.isNotEmpty()) { "Plan $planId has no active exercises" }
         val sessionId = insertSession(WorkoutSessionEntity(planId = planId, epochDay = epochDay, createdAt = nowMillis))
-        insertEntries(active.mapIndexed { index, exercise ->
-            WorkoutSessionExerciseEntity(
-                sessionId = sessionId, exerciseId = exercise.id, name = exercise.name, position = index,
-            )
-        })
-        return sessionId
+        // With IGNORE on the unique (planId, epochDay) index, a racing insert returns -1: re-resolve and resume.
+        val effectiveSessionId = if (sessionId != -1L) sessionId else sessionForDay(planId, epochDay) ?: return -1L
+        if (effectiveSessionId == sessionId) {
+            insertEntries(active.mapIndexed { index, exercise ->
+                WorkoutSessionExerciseEntity(
+                    sessionId = effectiveSessionId, exerciseId = exercise.id, name = exercise.name, position = index,
+                )
+            })
+        }
+        return effectiveSessionId
     }
 
     @Query("DELETE FROM workout_sessions WHERE id = :id")

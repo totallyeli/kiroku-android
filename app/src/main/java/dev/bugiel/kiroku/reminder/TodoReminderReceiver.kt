@@ -33,7 +33,16 @@ class TodoReminderReceiver : BroadcastReceiver() {
                             application.container.dateClock.nowMillis(),
                         )
                     }
-                    else -> TodoReminderNotifications.show(context, todo)
+                    else -> {
+                        val now = application.container.dateClock.nowMillis()
+                        val snoozeAt = application.container.todoSnoozeStore.snoozeUntil(todoId)
+                        if (snoozeAt > 0L && snoozeAt <= now) {
+                            // The snoozed alarm has fired: drop the persisted record so later
+                            // reschedules do not keep re-arming a consumed reminder.
+                            application.container.todoSnoozeStore.clear(todoId)
+                        }
+                        TodoReminderNotifications.show(context, todo)
+                    }
                 }
             } finally {
                 pendingResult.finish()

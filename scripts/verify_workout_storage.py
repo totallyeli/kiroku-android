@@ -1,25 +1,32 @@
-"""Check generated Room 5->6 SQL with SQLite. Run after compileDebugKotlin.
+"""Check generated Room auto-migration SQL with SQLite. Run after compileDebugKotlin.
 
 Uses only Python's standard library and an in-memory database, never application data.
 This complements JVM tests; it does not replace an Android installation smoke test.
+Update MIGRATION_FROM / MIGRATION_TO when the schema version bumps so the script
+keeps verifying the latest AutoMigration_<MIGRATION_FROM>_<MIGRATION_TO>_Impl.
 """
 
 import json
 from pathlib import Path
-import re
 import sqlite3
 import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMAS = ROOT / "app/schemas/dev.bugiel.kiroku.data.local.KirokuDatabase"
-GENERATED = ROOT / "app/build/generated/ksp/debug/kotlin/dev/bugiel/kiroku/data/local/KirokuDatabase_AutoMigration_5_6_Impl.kt"
+MIGRATION_FROM = 5
+MIGRATION_TO = 6
+GENERATED = (
+    ROOT
+    / "app/build/generated/ksp/debug/kotlin/dev/bugiel/kiroku/data/local"
+    / f"KirokuDatabase_AutoMigration_{MIGRATION_FROM}_{MIGRATION_TO}_Impl.kt"
+)
 
 
 class WorkoutStorageTest(unittest.TestCase):
     def setUp(self):
-        self.old = json.loads((SCHEMAS / "5.json").read_text(encoding="utf-8"))["database"]
-        self.new = json.loads((SCHEMAS / "6.json").read_text(encoding="utf-8"))["database"]
+        self.old = json.loads((SCHEMAS / f"{MIGRATION_FROM}.json").read_text(encoding="utf-8"))["database"]
+        self.new = json.loads((SCHEMAS / f"{MIGRATION_TO}.json").read_text(encoding="utf-8"))["database"]
         self.db = sqlite3.connect(":memory:")
         self.addCleanup(self.db.close)
         self.db.execute("PRAGMA foreign_keys = ON")

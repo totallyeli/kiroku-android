@@ -117,7 +117,7 @@ private fun MarkdownBlock(node: Node) {
 private fun MarkdownList(list: Node, ordered: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         var child = list.firstChild
-        var index = 1
+        var index = if (ordered) (list as? OrderedList)?.markerStartNumber ?: 1 else 1
         while (child != null) {
             if (child is ListItem) {
                 Row(modifier = Modifier.fillMaxWidth()) {

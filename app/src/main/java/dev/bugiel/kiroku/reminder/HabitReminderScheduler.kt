@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import androidx.core.net.toUri
 import dev.bugiel.kiroku.domain.model.Habit
 import dev.bugiel.kiroku.domain.model.isScheduledOn
@@ -31,13 +32,18 @@ class AndroidHabitReminderScheduler(
             dueTimeMinutes = dueTimeMinutes,
             now = ZonedDateTime.now(),
             isScheduledOn = habit::isScheduledOn,
-        ).toInstant().toEpochMilli()
+        )?.toInstant()?.toEpochMilli() ?: run {
+            // No future occurrence within the search window (e.g. corrupted weekday mask): skip scheduling.
+            cancel(habit.id)
+            return
+        }
 
-        alarmManager.setAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            triggerAt,
-            requireNotNull(reminderPendingIntent(habit.id, PendingIntent.FLAG_UPDATE_CURRENT)),
-        )
+        val pendingIntent = requireNotNull(reminderPendingIntent(habit.id, PendingIntent.FLAG_UPDATE_CURRENT))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && alarmManager.canScheduleExactAlarms()) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+        } else {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+        }
     }
 
     override fun cancel(habitId: Long) {

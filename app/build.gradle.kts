@@ -40,7 +40,8 @@ android {
 
     lint {
         abortOnError = true
-        checkReleaseBuilds = false
+        // Don't skip lint on release builds: the app ships GitHub APK updates, so keep the safety net.
+        checkReleaseBuilds = true
     }
 }
 

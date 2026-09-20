@@ -18,6 +18,17 @@ class KirokuApplication : Application() {
         HabitReminderNotifications.createChannel(this)
         TodoReminderNotifications.createChannel(this)
         rescheduleReminders()
+        sweepAttachmentOrphans()
+    }
+
+    private fun sweepAttachmentOrphans() {
+        applicationScope.launch {
+            try {
+                container.attachmentRepository.sweepOrphans(System.currentTimeMillis())
+            } catch (_: Exception) {
+                // Cleanup is best-effort; a failure must not block startup.
+            }
+        }
     }
 
     fun rescheduleReminders(onComplete: () -> Unit = {}) {

@@ -20,6 +20,7 @@ interface AttachmentRepository {
     suspend fun delete(attachment: NoteAttachment)
     suspend fun deleteStoredFiles(attachments: List<NoteAttachment>)
     suspend fun export(attachment: NoteAttachment, destination: Uri)
+    suspend fun sweepOrphans(nowMillis: Long)
     fun fileFor(attachment: NoteAttachment): File
 }
 
@@ -104,6 +105,23 @@ class OfflineAttachmentRepository(
 
     override fun fileFor(attachment: NoteAttachment): File = File(attachmentDirectory, attachment.storedFileName)
 
+    /**
+     * Deletes attachment files that no longer belong to any DB row, plus stale `.part`
+     * temp files left behind when the process died mid-copy.
+     */
+    override suspend fun sweepOrphans(nowMillis: Long) = withContext(Dispatchers.IO) {
+        val known = dao.allStoredFileNames().toSet()
+        attachmentDirectory.listFiles()?.forEach { file ->
+            // Never touch live `.part` temp files; only remove stale ones (a concurrent add is mid-copy).
+            if (file.name.endsWith(".part")) {
+                if (file.isFile && file.lastModified() < nowMillis - PART_FILE_MAX_AGE_MILLIS) file.delete()
+            } else if (file.isFile && file.name !in known) {
+                file.delete()
+            }
+        }
+        Unit
+    }
+
     private fun normalizedMimeType(displayName: String, reportedMimeType: String): String = when {
         reportedMimeType.isNotBlank() -> reportedMimeType
         displayName.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
@@ -120,5 +138,6 @@ class OfflineAttachmentRepository(
     companion object {
         private const val MAX_ATTACHMENT_BYTES = 50L * 1024 * 1024
         private const val MAX_DISPLAY_NAME_LENGTH = 180
+        private const val PART_FILE_MAX_AGE_MILLIS = 24L * 60 * 60 * 1000
     }
 }

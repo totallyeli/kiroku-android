@@ -19,6 +19,9 @@ interface NoteAttachmentDao {
     @Query("SELECT * FROM note_attachments WHERE noteId = :noteId")
     suspend fun getForNote(noteId: Long): List<NoteAttachmentEntity>
 
+    @Query("SELECT storedFileName FROM note_attachments")
+    suspend fun allStoredFileNames(): List<String>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(attachment: NoteAttachmentEntity): Long
 

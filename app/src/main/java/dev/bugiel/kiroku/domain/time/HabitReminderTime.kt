@@ -3,12 +3,17 @@ package dev.bugiel.kiroku.domain.time
 import java.time.ZonedDateTime
 
 object HabitReminderTime {
+    /**
+     * Returns null when no occurrence exists within the search window (e.g. an invalid
+     * due time or a habit whose weekday mask selects no days), so callers can skip
+     * scheduling instead of crashing on corrupted data restored from a backup.
+     */
     fun nextOccurrence(
         dueTimeMinutes: Int,
         now: ZonedDateTime,
         isScheduledOn: (Long) -> Boolean = { true },
-    ): ZonedDateTime {
-        require(dueTimeMinutes in 0 until MINUTES_PER_DAY)
+    ): ZonedDateTime? {
+        if (dueTimeMinutes !in 0 until MINUTES_PER_DAY) return null
 
         val hour = dueTimeMinutes / 60
         val minute = dueTimeMinutes % 60
@@ -17,7 +22,7 @@ object HabitReminderTime {
             val candidate = date.atTime(hour, minute).atZone(now.zone)
             if (candidate.isAfter(now) && isScheduledOn(date.toEpochDay())) return candidate
         }
-        error("No scheduled reminder occurrence was found.")
+        return null
     }
 
     private const val MINUTES_PER_DAY = 24 * 60

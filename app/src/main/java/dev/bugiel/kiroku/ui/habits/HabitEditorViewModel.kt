@@ -30,6 +30,7 @@ data class HabitEditorState(
     val showNameError: Boolean = false,
     val showScheduleError: Boolean = false,
     val hasSaveError: Boolean = false,
+    val isSaving: Boolean = false,
 ) {
     fun toHabit() = Habit(
         id = id,
@@ -94,6 +95,7 @@ class HabitEditorViewModel(
 
     fun save(onSaved: (Long) -> Unit) {
         val snapshot = mutableState.value
+        if (snapshot.isSaving) return
         if (snapshot.name.isBlank()) {
             mutableState.value = snapshot.copy(showNameError = true)
             return
@@ -102,6 +104,7 @@ class HabitEditorViewModel(
             mutableState.value = snapshot.copy(showScheduleError = true)
             return
         }
+        mutableState.value = snapshot.copy(isSaving = true)
         viewModelScope.launch {
             runCatching { repository.save(snapshot.toHabit()) }
                 .onSuccess { habitId ->
@@ -109,6 +112,7 @@ class HabitEditorViewModel(
                     onSaved(habitId)
                 }
                 .onFailure { mutableState.value = mutableState.value.copy(hasSaveError = true) }
+            mutableState.value = mutableState.value.copy(isSaving = false)
         }
     }
 

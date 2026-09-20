@@ -147,7 +147,7 @@ fun TodoEditorScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = { viewModel.save(onSaved) }, enabled = !state.isLoading) {
+                    TextButton(onClick = { viewModel.save(onSaved) }, enabled = !state.isLoading && !state.isSaving) {
                         Text(stringResource(R.string.save), fontWeight = FontWeight.SemiBold)
                     }
                 },

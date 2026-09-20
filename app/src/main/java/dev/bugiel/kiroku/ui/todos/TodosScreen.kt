@@ -87,6 +87,7 @@ fun TodosScreen(
     val completedMessage = stringResource(R.string.todo_completed_message)
     val undoLabel = stringResource(R.string.undo)
     var completedExpanded by rememberSaveable { mutableStateOf(false) }
+    var completedShown by rememberSaveable { mutableStateOf(true) }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -154,8 +155,14 @@ fun TodosScreen(
             } else {
                 TodoList(
                     sections = state.sections,
-                    completedExpanded = completedExpanded || state.filter == TodoStatusFilter.COMPLETED,
-                    onToggleCompleted = { completedExpanded = !completedExpanded },
+                    completedExpanded = when (state.filter) {
+                        TodoStatusFilter.COMPLETED -> completedShown
+                        else -> completedExpanded
+                    },
+                    onToggleCompleted = {
+                        if (state.filter == TodoStatusFilter.COMPLETED) completedShown = !completedShown
+                        else completedExpanded = !completedExpanded
+                    },
                     onOpen = onOpenTodo,
                     onComplete = viewModel::complete,
                     onReopen = viewModel::reopen,

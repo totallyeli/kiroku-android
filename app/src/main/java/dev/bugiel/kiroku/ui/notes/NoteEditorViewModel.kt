@@ -155,12 +155,19 @@ class NoteEditorViewModel(
 
     fun delete(onDeleted: () -> Unit) {
         autosaveJob?.cancel()
+        attachmentJob?.cancel()
         viewModelScope.launch {
-            val snapshot = mutableState.value
-            if (snapshot.id != 0L) {
-                repository.delete(snapshot.toNote())
-                attachmentRepository.deleteStoredFiles(snapshot.attachments)
-            }
+            // Hold the save mutex so an in-flight autosave cannot re-create the note
+            // after the delete completes.
+            runCatching {
+                saveMutex.withLock {
+                    val snapshot = mutableState.value
+                    if (snapshot.id != 0L) {
+                        repository.delete(snapshot.toNote())
+                        attachmentRepository.deleteStoredFiles(snapshot.attachments)
+                    }
+                }
+            }.onFailure { mutableState.update { it.copy(hasError = true) } }
             onDeleted()
         }
     }
@@ -177,9 +184,13 @@ class NoteEditorViewModel(
     }
 
     private suspend fun persistLocked(snapshot: NoteEditorState): Long {
-        val updated = snapshot.copy(updatedAt = dateClock.nowMillis(), hasError = false)
-        val id = repository.save(updated.toNote())
-        mutableState.value = updated.copy(id = id)
+        val updatedAt = dateClock.nowMillis()
+        val id = repository.save(snapshot.copy(updatedAt = updatedAt, hasError = false).toNote())
+        // Field-scoped state update: replaying the whole snapshot would clobber writers
+        // that ran while the save was in flight (attachment collector, later edits).
+        mutableState.update { state ->
+            state.copy(id = if (state.id == 0L) id else state.id, hasError = false)
+        }
         if (snapshot.id == 0L) observeAttachments(id)
         return id
     }

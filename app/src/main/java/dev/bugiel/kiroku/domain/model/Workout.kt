@@ -8,9 +8,13 @@ data class WorkoutPlan(
 ) {
     val activeExercises: List<WorkoutExercise> get() = exercises.filterNot { it.isArchived }
 
-    fun history(exerciseId: Long): List<WorkoutExerciseHistory> = sessions.mapNotNull { session ->
-        session.exercises.firstOrNull { it.exerciseId == exerciseId && it.sets.isNotEmpty() }?.let {
-            WorkoutExerciseHistory(session.id, session.epochDay, it)
+    // Every logged entry for the exercise in a session is kept, not just the first,
+    // so peak weight and total volume reflect all sets the user actually logged.
+    fun history(exerciseId: Long): List<WorkoutExerciseHistory> = buildList {
+        sessions.forEach { session ->
+            session.exercises
+                .filter { it.exerciseId == exerciseId && it.sets.isNotEmpty() }
+                .forEach { add(WorkoutExerciseHistory(session.id, session.epochDay, it)) }
         }
     }.sortedByDescending { it.epochDay }
 

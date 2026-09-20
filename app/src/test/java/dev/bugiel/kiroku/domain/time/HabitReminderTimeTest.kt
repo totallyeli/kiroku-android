@@ -42,7 +42,18 @@ class HabitReminderTimeTest {
         val reminder = HabitReminderTime.nextOccurrence(9 * 60, now)
 
         assertThat(reminder).isEqualTo(ZonedDateTime.of(2026, 3, 29, 9, 0, 0, 0, zone))
-        assertThat(reminder.offset).isNotEqualTo(now.offset)
+        assertThat(reminder!!.offset).isNotEqualTo(now.offset)
+    }
+
+    @Test
+    fun `an unschedulable habit returns null instead of throwing`() {
+        val now = ZonedDateTime.of(2026, 8, 20, 8, 15, 0, 0, zone)
+
+        // No weekday is scheduled, so no occurrence can ever be found.
+        assertThat(HabitReminderTime.nextOccurrence(9 * 60, now) { false }).isNull()
+        // Corrupted due time restored from a backup must not crash the scheduler.
+        assertThat(HabitReminderTime.nextOccurrence(-1, now)).isNull()
+        assertThat(HabitReminderTime.nextOccurrence(24 * 60, now)).isNull()
     }
 
     @Test
