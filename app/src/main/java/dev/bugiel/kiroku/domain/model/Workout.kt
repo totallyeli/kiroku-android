@@ -8,13 +8,15 @@ data class WorkoutPlan(
 ) {
     val activeExercises: List<WorkoutExercise> get() = exercises.filterNot { it.isArchived }
 
+    // This convenience method is plan-scoped. Use the repository's
+    // observeExerciseHistory(exerciseId) for history and peaks across all plans.
     // Every logged entry for the exercise in a session is kept, not just the first,
     // so peak weight and total volume reflect all sets the user actually logged.
     fun history(exerciseId: Long): List<WorkoutExerciseHistory> = buildList {
         sessions.forEach { session ->
             session.exercises
                 .filter { it.exerciseId == exerciseId && it.sets.isNotEmpty() }
-                .forEach { add(WorkoutExerciseHistory(session.id, session.epochDay, it)) }
+                .forEach { add(WorkoutExerciseHistory(session.id, session.epochDay, it, planId = id)) }
         }
     }.sortedByDescending { it.epochDay }
 
@@ -41,4 +43,5 @@ data class WorkoutExerciseHistory(
     val sessionId: Long,
     val epochDay: Long,
     val exercise: WorkoutSessionExercise,
+    val planId: Long? = null,
 )

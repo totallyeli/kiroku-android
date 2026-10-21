@@ -18,4 +18,14 @@ Before submitting a change, search the maintained files for unintended non-Engli
 ./gradlew test
 ./gradlew lint
 ./gradlew assembleDebug
+python3 scripts/verify_workout_storage.py
+python3 scripts/verify_exercise_library.py
 ```
+
+Run the SQLite checks after compilation so that generated Room schemas and migration code are available. Exercise-library changes must preserve recorded session snapshots, sets, and exercise identities when plan assignments change. Replacing a day's exercise must never attribute the old exercise's sets to its replacement.
+
+## Publishing
+
+Use the authenticated GitHub account `totallyeli` and commit identity `Elias Bugiel <totallyeli@users.noreply.github.com>`. Verify authentication with `gh api user` before pushing or creating a release. Do not rewrite published history or tags as part of a normal release.
+
+Release APKs must use the existing signing certificate and a higher version code. Keep signing material outside version control and use the local ignored signing properties described in the README. Run tests, release lint, migration checks, and APK signature verification before publication.

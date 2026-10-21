@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.0 - 2026-10-21
+
+- Added a reusable exercise library with shared peak weights and history across all workout plans and days
+- Added optional assignment of library exercises to one or more plans; empty plans can start workout days
+- Added workout-day settings for adding, swapping, and removing exercises without changing the plan template or other days
+- Added confirmation before replacing or removing exercises with saved sets
+- Kept previous workout snapshots and sets intact when unassigning exercises or archiving library entries
+- Added a version 6-to-7 database migration preserving existing exercises, plan assignments, dates, sets, and historical names
+- Added English and German labels, searchable exercise selection, and regression tests for migration and day customization
+
 ## 1.4.1 — 2026-09-20
 
 - Fixed to-do snoozes silently disappearing after a reboot or timezone change; snoozed reminders are now re-armed from a persisted store

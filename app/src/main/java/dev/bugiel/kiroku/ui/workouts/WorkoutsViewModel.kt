@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.bugiel.kiroku.data.repository.WorkoutRepository
 import dev.bugiel.kiroku.domain.model.WorkoutPlan
+import dev.bugiel.kiroku.domain.model.WorkoutExercise
+import dev.bugiel.kiroku.domain.model.WorkoutExerciseHistory
+import kotlinx.coroutines.flow.combine
 import dev.bugiel.kiroku.domain.time.DateClock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,11 +16,19 @@ import kotlinx.coroutines.launch
 
 data class WorkoutsState(
     val plans: List<WorkoutPlan> = emptyList(),
+    val library: List<WorkoutExercise> = emptyList(),
     val isLoading: Boolean = true,
     val loadFailed: Boolean = false,
     val isWorking: Boolean = false,
     val hasError: Boolean = false,
-)
+) {
+    fun history(exerciseId: Long): List<WorkoutExerciseHistory> = plans
+        .flatMap { it.history(exerciseId) }
+        .sortedWith(compareByDescending<WorkoutExerciseHistory> { it.epochDay }.thenByDescending { it.exercise.id })
+
+    fun peakWeightKg(exerciseId: Long): Double? = history(exerciseId)
+        .flatMap { it.exercise.sets }.maxOfOrNull { it.weightKg }
+}
 
 class WorkoutsViewModel(
     private val repository: WorkoutRepository,
@@ -36,8 +47,10 @@ class WorkoutsViewModel(
         mutableState.update { it.copy(isLoading = true, loadFailed = false) }
         viewModelScope.launch {
             try {
-                repository.observePlans().collect { plans ->
-                    mutableState.update { it.copy(plans = plans, isLoading = false) }
+                combine(repository.observePlans(), repository.observeExercises()) { plans, library ->
+                    plans to library
+                }.collect { (plans, library) ->
+                    mutableState.update { it.copy(plans = plans, library = library, isLoading = false) }
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -62,6 +75,29 @@ class WorkoutsViewModel(
     }
     fun addExercise(planId: Long, name: String, onSaved: () -> Unit) = mutate {
         repository.addExercise(planId, name)
+        onSaved()
+    }
+    fun createExercise(name: String, onCreated: (Long) -> Unit) = mutate {
+        onCreated(repository.createExercise(name))
+    }
+    fun assignExercise(planId: Long, exerciseId: Long, onSaved: () -> Unit) = mutate {
+        repository.assignExercise(planId, exerciseId)
+        onSaved()
+    }
+    fun unassignExercise(planId: Long, exerciseId: Long, onSaved: () -> Unit = {}) = mutate {
+        repository.unassignExercise(planId, exerciseId)
+        onSaved()
+    }
+    fun addSessionExercise(sessionId: Long, exerciseId: Long, onSaved: () -> Unit) = mutate {
+        repository.addSessionExercise(sessionId, exerciseId)
+        onSaved()
+    }
+    fun replaceSessionExercise(entryId: Long, exerciseId: Long, onSaved: () -> Unit) = mutate {
+        repository.replaceSessionExercise(entryId, exerciseId)
+        onSaved()
+    }
+    fun deleteSessionExercise(entryId: Long, onSaved: () -> Unit) = mutate {
+        repository.deleteSessionExercise(entryId)
         onSaved()
     }
     fun renameExercise(id: Long, name: String, onSaved: () -> Unit) = mutate {

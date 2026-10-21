@@ -30,11 +30,13 @@ import java.time.LocalDate
 
 @Composable
 fun WorkoutExerciseScreen(
-    planId: Long, exerciseId: Long, viewModel: WorkoutsViewModel, onBack: () -> Unit, onOpenEntry: (Long) -> Unit,
+    exerciseId: Long, viewModel: WorkoutsViewModel, onBack: () -> Unit, onOpenEntry: (Long) -> Unit,
+    planId: Long? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val plan = state.plans.firstOrNull { it.id == planId }
-    val exercise = plan?.exercises?.firstOrNull { it.id == exerciseId }
+    val exercise = state.library.firstOrNull { it.id == exerciseId }
+    val assigned = plan?.exercises?.any { it.id == exerciseId } == true
     val context = LocalContext.current
     var rename by rememberSaveable { mutableStateOf(false) }
     var archive by rememberSaveable { mutableStateOf(false) }
@@ -64,19 +66,31 @@ fun WorkoutExerciseScreen(
             item { WorkoutEmpty(stringResource(R.string.workout_not_found)) }
         } else {
             item {
-                PeakWeight(plan.peakWeightKg(exercise.id))
+                PeakWeight(state.peakWeightKg(exercise.id))
+                Text(stringResource(R.string.workout_global_history_hint), style = MaterialTheme.typography.bodySmall)
+                if (assigned) {
+                    OutlinedButton(
+                        onClick = { viewModel.unassignExercise(plan.id, exercise.id) { onBack() } },
+                        enabled = !state.isWorking, modifier = Modifier.padding(top = 12.dp),
+                    ) { Text(stringResource(R.string.workout_unassign_exercise)) }
+                    Text(stringResource(R.string.workout_unassign_hint), style = MaterialTheme.typography.bodySmall)
+                }
                 OutlinedButton(
                     onClick = { if (exercise.isArchived) viewModel.archiveExercise(exercise.id, false) else archive = true },
                     enabled = !state.isWorking, modifier = Modifier.padding(top = 12.dp),
                 ) { Text(stringResource(if (exercise.isArchived) R.string.workout_restore else R.string.workout_archive_exercise)) }
             }
             item { Text(stringResource(R.string.workout_exercise_history), style = MaterialTheme.typography.titleMedium) }
-            val history = plan.history(exercise.id)
+            val history = state.history(exercise.id)
             if (history.isEmpty()) item { WorkoutEmpty(stringResource(R.string.workout_no_history)) }
-            items(history, key = { it.sessionId }) { record ->
+            items(history, key = { it.exercise.id }) { record ->
                 Card(onClick = { onOpenEntry(record.exercise.id) }, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(formatLongDate(context, LocalDate.ofEpochDay(record.epochDay)), style = MaterialTheme.typography.titleMedium)
+                        Text(record.exercise.name, style = MaterialTheme.typography.bodyLarge)
+                        state.plans.firstOrNull { candidate -> candidate.sessions.any { it.id == record.sessionId } }?.let { sourcePlan ->
+                            Text(sourcePlan.name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         record.exercise.sets.forEachIndexed { index, set ->
                             Text(pluralStringResource(R.plurals.workout_set_summary, set.reps, index + 1, weightText(set.weightKg), set.reps))
                         }

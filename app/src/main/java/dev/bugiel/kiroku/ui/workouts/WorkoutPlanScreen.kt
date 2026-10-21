@@ -2,7 +2,6 @@ package dev.bugiel.kiroku.ui.workouts
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
@@ -17,13 +16,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -54,10 +51,10 @@ fun WorkoutPlanScreen(
                 initial = plan.name, working = state.isWorking, onDismiss = { dialog = null },
                 onSave = { viewModel.renamePlan(plan.id, it) { dialog = null } },
             )
-            "exercise" -> WorkoutNameDialog(
-                title = stringResource(R.string.workout_add_exercise), label = stringResource(R.string.workout_exercise_name),
-                working = state.isWorking, onDismiss = { dialog = null },
-                onSave = { viewModel.addExercise(plan.id, it) { dialog = null } },
+            "exercise" -> WorkoutExercisePicker(
+                title = stringResource(R.string.workout_assign_exercise), state = state, viewModel = viewModel,
+                excludedIds = plan.exercises.map { it.id }.toSet(), onDismiss = { dialog = null },
+                onSelect = { viewModel.assignExercise(plan.id, it) { dialog = null } },
             )
             "delete" -> WorkoutConfirmation(
                 title = stringResource(R.string.workout_delete_plan), message = stringResource(R.string.workout_delete_plan_message),
@@ -85,7 +82,7 @@ fun WorkoutPlanScreen(
             item {
                 Button(
                     onClick = { viewModel.startDay(plan.id, onOpenDay) }, modifier = Modifier.fillMaxWidth(),
-                    enabled = !state.isWorking && (plan.activeExercises.isNotEmpty() || plan.sessions.any { it.epochDay == LocalDate.now().toEpochDay() }),
+                    enabled = !state.isWorking,
                 ) {
                     Text(stringResource(R.string.workout_start_today))
                 }
@@ -95,17 +92,17 @@ fun WorkoutPlanScreen(
                 )
             }
             item {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.workout_exercises), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { dialog = "exercise" }, enabled = !state.isWorking) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.workout_exercises), style = MaterialTheme.typography.titleMedium)
+                    OutlinedButton(onClick = { dialog = "exercise" }, enabled = !state.isWorking, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Default.Add, null)
-                        Text(stringResource(R.string.workout_add_exercise))
+                        Text(stringResource(R.string.workout_assign_exercise), modifier = Modifier.padding(start = 8.dp))
                     }
                 }
             }
             if (plan.activeExercises.isEmpty()) item { WorkoutEmpty(stringResource(R.string.workout_no_exercises)) }
             items(plan.activeExercises, key = { "exercise-${it.id}" }) { exercise ->
-                ExerciseCard(exercise, plan.peakWeightKg(exercise.id)) { onOpenExercise(exercise.id) }
+                ExerciseCard(exercise, state.peakWeightKg(exercise.id)) { onOpenExercise(exercise.id) }
             }
             val archived = plan.exercises.filter { it.isArchived }
             if (archived.isNotEmpty()) {
@@ -115,7 +112,7 @@ fun WorkoutPlanScreen(
                     }
                 }
                 if (showArchived) items(archived, key = { "archived-${it.id}" }) { exercise ->
-                    ExerciseCard(exercise, plan.peakWeightKg(exercise.id)) { onOpenExercise(exercise.id) }
+                    ExerciseCard(exercise, state.peakWeightKg(exercise.id)) { onOpenExercise(exercise.id) }
                 }
             }
             item { Text(stringResource(R.string.workout_days), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp)) }

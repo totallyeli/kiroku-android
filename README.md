@@ -17,9 +17,10 @@ Kiroku is a local-first Android app for notes, habits, to-dos, and workouts. It 
 - Create to-dos with deadlines, priorities, colors, icons, and optional local reminders
 - Find work quickly with search, status filters, and smart Overdue, Today, Tomorrow, Upcoming, and Completed sections
 - Complete, undo, reopen, edit, or safely delete to-dos, including notification actions to complete or snooze for 10 minutes
-- Create workout plans such as Push, Pull, Legs, or Cardio and choose exercises for each routine
+- Build a reusable exercise library and optionally assign exercises to workout plans such as Push, Pull, Legs, or Cardio
+- Start empty workout days or use a plan template, then add, swap, or remove exercises for that day only
 - Record multiple sets with weight in kilograms and repetitions in dated workout sessions
-- See each exercise’s peak weight before opening it and review or correct its history
+- Track each exercise’s peak weight and editable history across every plan and workout day
 - Choose a light, dark, or system theme, with dynamic colors on Android 12 and later
 - Use Kiroku in English or German, or follow the Android system language
 - Check the latest GitHub Release from Settings, download its verified APK, and open Android's installer
@@ -61,11 +62,15 @@ An app update uses the same package name and signing key. The version 2-to-3 mig
 
 ## Workout tracking
 
-The **Workouts** tab contains your plans. Create a plan, add exercises, and choose **Start / open today’s workout**. Each plan has one workout day per local date; opening it again resumes the existing day. Select an exercise, enter a weight and rep count for each set, and tap **Save**. Kilograms accept a decimal point or comma, and 0 kg supports bodyweight exercises.
+Open **Exercise library** in the **Workouts** tab to create reusable exercises. Assign any of these to one or more workout plans, or leave a plan empty and choose exercises as you train. Each plan has one workout day per local date; **Start / open today’s workout** resumes the saved day, even for a plan with no assigned exercises.
 
-Exercise cards show the highest recorded weight for that exercise in that plan. The history screen lists previous dates and sets. Editing or deleting a recorded set recalculates the peak from the remaining history. No unsaved values contribute to personal bests.
+The settings gear within a workout day opens day-only exercise management. Add an exercise from the library, swap it for another exercise, or remove it without changing the plan template or any other workout day. Swapping or removing an exercise with saved sets requires confirmation because those sets belong to the original exercise and must not be attributed to its replacement.
 
-Workout days retain snapshots of their exercise names and order. Adding, renaming, or archiving exercises affects future days without rewriting earlier sessions. Archived exercises retain their history and can be restored. Deleting a day or entire plan requires confirmation.
+Select an exercise, enter a weight and rep count for each set, and tap **Save**. Kilograms accept a decimal point or comma, and 0 kg supports bodyweight exercises. Exercise cards and library history show the highest saved weight for the same exercise across all plans and workout days. Editing or deleting saved sets recalculates the peak. Unsaved values do not contribute to personal bests.
+
+Workout days retain snapshots of their exercise names and order. Removing a plan assignment never removes past entries. Renaming a library exercise does not rewrite historical names; archiving excludes it from new selections while keeping its existing history editable. Deleting a day or entire plan requires confirmation, and deleting a plan does not delete shared library exercises or records in other plans.
+
+The version 6-to-7 migration moves existing exercises into the library and assigns them back to their original plans while preserving their identifiers, archived state, workout dates, name snapshots, and sets. Exercises with identical names remain separate to avoid silently combining unrelated records.
 
 The feature follows the existing Room → repository → ViewModel → Compose structure. Session creation and set replacement run in transactions, and foreign keys keep deletions within the selected workout records. English and German interfaces use the existing themes and date formatting.
 
@@ -88,7 +93,16 @@ After compilation, the optional Python standard-library check exercises the gene
 
 ```bash
 python scripts/verify_workout_storage.py
+python scripts/verify_exercise_library.py
 ```
+
+The exercise-library check runs the version 6-to-7 migration against populated SQLite databases with foreign keys enabled, verifies preservation of existing records, and exercises shared assignments and day-only customization.
+
+### Signed releases
+
+Commits and GitHub releases are published as **Elias Bugiel / totallyeli**. Keep the existing signing keystore outside the repository. The ignored `keystore.properties` file contains `storeFile` (relative to the app module, or absolute), `storePassword`, `keyAlias`, and `keyPassword`. Never commit that file or the keystore. With those properties present, `./gradlew assembleRelease` signs the release APK. Without them the release variant is unsigned and must not be published as an installable update.
+
+Before uploading, use `apksigner verify --print-certs` to verify that the certificate matches the previous release. Publish `kiroku-vX.Y.Z.apk` plus its `.sha256` checksum only after tests, lint, migration checks, and signature verification pass.
 
 On Windows, run the same tasks with `gradlew.bat`. The generated APK is located at:
 

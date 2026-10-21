@@ -15,7 +15,21 @@ fun NavGraphBuilder.workoutDestinations(
     onOpenSettings: () -> Unit,
 ) {
     composable("workouts") {
-        WorkoutsScreen(workouts, onOpenPlan = { navController.navigate("workout-plan/$it") }, onOpenSettings)
+        WorkoutsScreen(
+            workouts, onOpenPlan = { navController.navigate("workout-plan/$it") }, onOpenSettings = onOpenSettings,
+            onOpenLibrary = { navController.navigate("workout-library") },
+        )
+    }
+    composable("workout-library") {
+        WorkoutLibraryScreen(workouts, onBack = { navController.popBackStack() },
+            onOpenExercise = { navController.navigate("workout-exercise/$it") })
+    }
+    composable("workout-exercise/{exerciseId}") { entry ->
+        val exerciseId = entry.arguments?.getString("exerciseId")?.toLongOrNull() ?: return@composable
+        WorkoutExerciseScreen(
+            exerciseId = exerciseId, viewModel = workouts, onBack = { navController.popBackStack() },
+            onOpenEntry = { navController.navigate("workout-sets/$it") },
+        )
     }
     composable("workout-plan/{planId}") { entry ->
         val planId = entry.arguments?.getString("planId")?.toLongOrNull() ?: return@composable
@@ -37,7 +51,7 @@ fun NavGraphBuilder.workoutDestinations(
         val planId = entry.arguments?.getString("planId")?.toLongOrNull() ?: return@composable
         val exerciseId = entry.arguments?.getString("exerciseId")?.toLongOrNull() ?: return@composable
         WorkoutExerciseScreen(
-            planId, exerciseId, workouts, onBack = { navController.popBackStack() },
+            exerciseId, workouts, planId = planId, onBack = { navController.popBackStack() },
             onOpenEntry = { navController.navigate("workout-sets/$it") },
         )
     }

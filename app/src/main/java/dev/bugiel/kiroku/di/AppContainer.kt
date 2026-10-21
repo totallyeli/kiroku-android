@@ -3,6 +3,7 @@ package dev.bugiel.kiroku.di
 import android.content.Context
 import androidx.room3.Room
 import dev.bugiel.kiroku.data.local.KirokuDatabase
+import dev.bugiel.kiroku.data.local.MIGRATION_6_7
 import dev.bugiel.kiroku.data.repository.HabitRepository
 import dev.bugiel.kiroku.data.repository.AttachmentRepository
 import dev.bugiel.kiroku.data.repository.NoteRepository
@@ -30,7 +31,7 @@ class AppContainer(context: Context) {
         Room.databaseBuilder<KirokuDatabase>(
             context = context.applicationContext,
             name = "kiroku.db",
-        ).build()
+        ).addMigrations(MIGRATION_6_7).build()
     }
 
     val noteRepository: NoteRepository by lazy {

@@ -7,6 +7,7 @@ keeps verifying the latest AutoMigration_<MIGRATION_FROM>_<MIGRATION_TO>_Impl.
 """
 
 import json
+import re
 from pathlib import Path
 import sqlite3
 import unittest

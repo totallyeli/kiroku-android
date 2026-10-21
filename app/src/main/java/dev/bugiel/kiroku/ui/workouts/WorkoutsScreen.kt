@@ -29,7 +29,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.bugiel.kiroku.R
 
 @Composable
-fun WorkoutsScreen(viewModel: WorkoutsViewModel, onOpenPlan: (Long) -> Unit, onOpenSettings: () -> Unit) {
+fun WorkoutsScreen(
+    viewModel: WorkoutsViewModel, onOpenPlan: (Long) -> Unit, onOpenSettings: () -> Unit, onOpenLibrary: () -> Unit,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showCreate by rememberSaveable { mutableStateOf(false) }
     if (showCreate) {
@@ -52,6 +54,12 @@ fun WorkoutsScreen(viewModel: WorkoutsViewModel, onOpenPlan: (Long) -> Unit, onO
         },
     ) {
         item { Text(stringResource(R.string.workout_intro), style = MaterialTheme.typography.bodyLarge) }
+        item {
+            androidx.compose.material3.OutlinedButton(onClick = onOpenLibrary, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.FitnessCenter, null)
+                Text(stringResource(R.string.workout_exercise_library), modifier = Modifier.padding(start = 8.dp))
+            }
+        }
         if (state.plans.isEmpty()) item { WorkoutEmpty(stringResource(R.string.workout_no_plans)) }
         items(state.plans, key = { it.id }) { plan ->
             Card(onClick = { onOpenPlan(plan.id) }, modifier = Modifier.fillMaxWidth()) {

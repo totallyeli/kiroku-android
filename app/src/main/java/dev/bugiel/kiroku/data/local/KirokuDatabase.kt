@@ -15,6 +15,7 @@ import dev.bugiel.kiroku.data.local.entity.TodoEntity
 import dev.bugiel.kiroku.data.local.dao.WorkoutDao
 import dev.bugiel.kiroku.data.local.entity.WorkoutPlanEntity
 import dev.bugiel.kiroku.data.local.entity.WorkoutExerciseEntity
+import dev.bugiel.kiroku.data.local.entity.WorkoutPlanExerciseEntity
 import dev.bugiel.kiroku.data.local.entity.WorkoutSessionEntity
 import dev.bugiel.kiroku.data.local.entity.WorkoutSessionExerciseEntity
 import dev.bugiel.kiroku.data.local.entity.WorkoutSetEntity
@@ -28,11 +29,12 @@ import dev.bugiel.kiroku.data.local.entity.WorkoutSetEntity
         TodoEntity::class,
         WorkoutPlanEntity::class,
         WorkoutExerciseEntity::class,
+        WorkoutPlanExerciseEntity::class,
         WorkoutSessionEntity::class,
         WorkoutSessionExerciseEntity::class,
         WorkoutSetEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),

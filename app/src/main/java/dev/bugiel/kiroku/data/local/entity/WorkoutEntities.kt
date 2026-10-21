@@ -7,6 +7,7 @@ import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import androidx.room3.Relation
 import dev.bugiel.kiroku.domain.model.WorkoutExercise
+import dev.bugiel.kiroku.domain.model.WorkoutExerciseHistory
 import dev.bugiel.kiroku.domain.model.WorkoutPlan
 import dev.bugiel.kiroku.domain.model.WorkoutSession
 import dev.bugiel.kiroku.domain.model.WorkoutSessionExercise
@@ -19,20 +20,40 @@ data class WorkoutPlanEntity(
     val createdAt: Long,
 )
 
-@Entity(
-    tableName = "workout_exercises",
-    foreignKeys = [ForeignKey(
-        entity = WorkoutPlanEntity::class, parentColumns = ["id"], childColumns = ["planId"],
-        onDelete = ForeignKey.CASCADE,
-    )],
-    indices = [Index("planId")],
-)
+@Entity(tableName = "workout_exercises")
 data class WorkoutExerciseEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val planId: Long,
     val name: String,
-    val position: Int,
     val isArchived: Boolean = false,
+) {
+    fun toDomain() = WorkoutExercise(id, name, isArchived)
+}
+
+@Entity(
+    tableName = "workout_plan_exercises",
+    primaryKeys = ["planId", "exerciseId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = WorkoutPlanEntity::class, parentColumns = ["id"], childColumns = ["planId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = WorkoutExerciseEntity::class, parentColumns = ["id"], childColumns = ["exerciseId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("exerciseId")],
+)
+data class WorkoutPlanExerciseEntity(
+    val planId: Long,
+    val exerciseId: Long,
+    val position: Int,
+)
+
+data class WorkoutAssignedExercise(
+    @Embedded val assignment: WorkoutPlanExerciseEntity,
+    @Relation(parentColumns = ["exerciseId"], entityColumns = ["id"])
+    val exercise: WorkoutExerciseEntity,
 )
 
 @Entity(
@@ -99,6 +120,14 @@ data class WorkoutEntryWithSets(
     )
 }
 
+data class WorkoutExerciseHistoryRow(
+    val epochDay: Long,
+    val planId: Long,
+    @Embedded val entry: WorkoutEntryWithSets,
+) {
+    fun toDomain() = WorkoutExerciseHistory(entry.entry.sessionId, epochDay, entry.toDomain(), planId)
+}
+
 data class WorkoutSessionWithEntries(
     @Embedded val session: WorkoutSessionEntity,
     @Relation(parentColumns = ["id"], entityColumns = ["sessionId"], entity = WorkoutSessionExerciseEntity::class)
@@ -111,13 +140,14 @@ data class WorkoutSessionWithEntries(
 
 data class WorkoutPlanWithHistory(
     @Embedded val plan: WorkoutPlanEntity,
-    @Relation(parentColumns = ["id"], entityColumns = ["planId"]) val exercises: List<WorkoutExerciseEntity>,
+    @Relation(parentColumns = ["id"], entityColumns = ["planId"], entity = WorkoutPlanExerciseEntity::class)
+    val exercises: List<WorkoutAssignedExercise>,
     @Relation(parentColumns = ["id"], entityColumns = ["planId"], entity = WorkoutSessionEntity::class)
     val sessions: List<WorkoutSessionWithEntries>,
 ) {
     fun toDomain() = WorkoutPlan(
         plan.id, plan.name,
-        exercises.sortedBy { it.position }.map { WorkoutExercise(it.id, it.name, it.isArchived) },
+        exercises.sortedWith(compareBy({ it.assignment.position }, { it.exercise.id })).map { it.exercise.toDomain() },
         sessions.sortedByDescending { it.session.epochDay }.map { it.toDomain() },
     )
 }
